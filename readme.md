@@ -5,7 +5,7 @@ If so then click [HERE!](#Setup).
 ## Table Of Contents
 1. [Installation](#Setup)
 2. [Compiling](#Compiling)
-3. [Cross-Compiling](#Cross Compiling)
+3. [Cross-Compiling](#Cross-Compiling)
 
 # Setup
 I'm not good at writing guides so it's probably best you look at the [official installation guide](https://www.rust-lang.org/tools/install)
@@ -27,7 +27,7 @@ For a release build, use the following:
 cargo build --release
 ```
 The output can be found in the Release folder.
-# Cross Compiling
+# Cross-Compiling
 Quick guide on compiling for an operating system that differs from the one you are currently using (e.g. Compiling for Windows whilst using Linux).  
 ## Installation
 ### Windows 
@@ -67,7 +67,7 @@ Any other targets may be found [here](https://forge.rust-lang.org/infra/other-in
 ```bash
 rustup target add <TARGET>
 ```
-## Compiling 
+## Building / Compiling 
 Cross-compiling can be performed with a single command, with the final arguement changing depending on your target.  
 ```bash
 cargo build --target <TARGET>
