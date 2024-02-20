@@ -83,7 +83,7 @@ impl eframe::App for TemplateApp {
 
             ui.add(egui::github_link_file!(
                 "https://github.com/Portablefire22/Arduino-Communication-GUI/blob/master/",
-                "Source code."
+                "Source code"
             ));
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
