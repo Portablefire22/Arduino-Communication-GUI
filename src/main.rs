@@ -17,8 +17,9 @@ fn main() -> eframe::Result<()> {
             ),
         ..Default::default()
     };
+
     eframe::run_native(
-        "eframe template",
+        "Arduino Communication",
         native_options,
         Box::new(|cc| Box::new(arduino_communication_gui::TemplateApp::new(cc))),
     )

@@ -1,3 +1,6 @@
+use serialport::SerialPortInfo;
+use std::time::Duration;
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -35,6 +38,10 @@ impl TemplateApp {
     }
 }
 
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
+
 impl eframe::App for TemplateApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
@@ -58,10 +65,25 @@ impl eframe::App for TemplateApp {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                     });
-                    ui.add_space(16.0);
                 }
-
-                egui::widgets::global_dark_light_mode_buttons(ui);
+                let ports = serialport::available_ports();
+                ui.menu_button("Ports", |ui| match ports {
+                    Err(e) => {
+                        ui.label("No ports found!");
+                    }
+                    _ => {
+                        for port in ports.unwrap().iter() {
+                            if ui.button(port.port_name.clone()).clicked() {
+                                print_type_of(
+                                    &serialport::new(&port.port_name, 9600)
+                                        .timeout(Duration::from_millis(100))
+                                        .open()
+                                        .expect("Failed to open port"),
+                                );
+                            }
+                        }
+                    }
+                });
             });
         });
 
@@ -70,7 +92,7 @@ impl eframe::App for TemplateApp {
             ui.heading("eframe template");
 
             ui.horizontal(|ui| {
-                ui.label("Write somethinge: ");
+                ui.label("Write something: ");
                 ui.text_edit_singleline(&mut self.label);
             });
 
