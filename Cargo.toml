@@ -15,9 +15,9 @@ eframe = { version = "0.26.0", default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 log = "0.4"
-serialport = "4.3.0" # Required to communicate with the Arduino
+#serialport = "4.3.0" # Required to communicate with the Arduino
 tokio = { version = "1", features = ["full"] }
-#tokio-serial = "5.4.1"
+tokio-serial = "5.4.1"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }

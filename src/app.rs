@@ -1,5 +1,7 @@
-use serialport::SerialPortInfo;
-use std::time::Duration;
+use std::io::Write;
+use std::{io, ops::Deref, time::Duration};
+use tokio::sync::broadcast;
+use tokio_serial::SerialPortInfo;
 
 use crate::arduino::Arduino;
 
@@ -12,16 +14,27 @@ pub struct TemplateApp {
 
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
+    #[serde(skip)]
     selected_port: String,
+    #[serde(skip)]
+    tx: broadcast::Sender<()>,
+    #[serde(skip)]
+    rx: broadcast::Receiver<()>,
+    #[serde(skip)]
+    arduino: Option<Arduino>,
 }
 
 impl Default for TemplateApp {
     fn default() -> Self {
+        let (tx, mut rx) = broadcast::channel(10);
         Self {
             // Example stuff:
             label: "Hello World!".to_owned(),
             value: 2.7,
-            selected_port: "None".to_owned(),
+            selected_port: "Disconnected".to_owned(),
+            tx,
+            rx,
+            arduino: None,
         }
     }
 }
@@ -72,7 +85,7 @@ impl eframe::App for TemplateApp {
                         }
                     });
                 }
-                let ports = serialport::available_ports();
+                let ports = tokio_serial::available_ports();
                 ui.menu_button("Ports", |ui| match ports {
                     Err(e) => {
                         ui.label("No ports found!");
@@ -80,9 +93,40 @@ impl eframe::App for TemplateApp {
                     }
                     _ => {
                         for port in ports.unwrap().iter() {
-                            if ui.button(port.port_name.clone()).clicked()
-                                && !port.port_name.eq(&self.selected_port)
-                            {
+                            if port.port_name.eq_ignore_ascii_case(&self.selected_port) {
+                                if ui
+                                    .button(format!("{} | Disconnect", &port.port_name))
+                                    .clicked()
+                                {
+                                    self.selected_port = "Disconnected".to_owned();
+                                    self.arduino = None;
+                                }
+                            } else {
+                                if ui.button(port.port_name.clone()).clicked() {
+                                    self.selected_port = port.port_name.clone();
+                                    println!("{:?}", port.port_name);
+
+                                    self.arduino = Some(Arduino::new(port.port_name.clone(), 9600));
+                                    let mut serial_buffer: Vec<u8> = vec![0; 32];
+                                    loop {
+                                        match self
+                                            .arduino
+                                            .as_mut()
+                                            .unwrap()
+                                            .port
+                                            .read(serial_buffer.as_mut_slice())
+                                        {
+                                            Ok(t) => {
+                                                let recieved =
+                                                    String::from_utf8_lossy(&serial_buffer[..t]);
+                                                println!("{}", recieved);
+                                            }
+                                            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                                            Err(e) => eprintln!("{:?}", e),
+                                        }
+                                        println!("{:?}", serial_buffer);
+                                    }
+                                }
                             }
                         }
                     }
@@ -104,6 +148,9 @@ impl eframe::App for TemplateApp {
                 self.value += 1.0;
             }
 
+            ui.separator();
+            ui.add(egui::Label::new(&self.selected_port));
+            ui.add(egui::Label::new(&format!("{:?}", self.arduino)));
             ui.separator();
 
             ui.add(egui::github_link_file!(
