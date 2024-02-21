@@ -104,10 +104,8 @@ impl eframe::App for TemplateApp {
                             } else {
                                 if ui.button(port.port_name.clone()).clicked() {
                                     self.selected_port = port.port_name.clone();
-                                    println!("{:?}", port.port_name);
-
                                     self.arduino = Some(Arduino::new(port.port_name.clone(), 9600));
-                                    let mut serial_buffer: Vec<u8> = vec![0; 32];
+                                    let mut serial_buffer: Vec<u8> = vec![0; 64];
                                     loop {
                                         match self
                                             .arduino
@@ -122,9 +120,8 @@ impl eframe::App for TemplateApp {
                                                 println!("{}", recieved);
                                             }
                                             Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                                            Err(e) => eprintln!("{:?}", e),
+                                            Err(_e) => (),
                                         }
-                                        println!("{:?}", serial_buffer);
                                     }
                                 }
                             }
