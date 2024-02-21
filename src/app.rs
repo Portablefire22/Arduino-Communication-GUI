@@ -12,6 +12,7 @@ pub struct TemplateApp {
 
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
+    selected_port: String,
 }
 
 impl Default for TemplateApp {
@@ -20,6 +21,7 @@ impl Default for TemplateApp {
             // Example stuff:
             label: "Hello World!".to_owned(),
             value: 2.7,
+            selected_port: "None".to_owned(),
         }
     }
 }
@@ -74,10 +76,14 @@ impl eframe::App for TemplateApp {
                 ui.menu_button("Ports", |ui| match ports {
                     Err(e) => {
                         ui.label("No ports found!");
+                        println!("{:?}", e);
                     }
                     _ => {
                         for port in ports.unwrap().iter() {
-                            if ui.button(port.port_name.clone()).clicked() && port.port_name.eq() {}
+                            if ui.button(port.port_name.clone()).clicked()
+                                && !port.port_name.eq(&self.selected_port)
+                            {
+                            }
                         }
                     }
                 });
