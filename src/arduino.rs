@@ -1,12 +1,12 @@
 use std::time::Duration;
 
-pub struct ArduinoInformation {
+pub struct Arduino {
     port: Box<dyn serialport::SerialPort>,
     baud_rate: u32,
     data_collection: Vec<Vec<()>>,
 }
 
-impl ArduinoInformation {
+impl Arduino {
     pub fn new(port_path: String, baud_rate: u32) -> Self {
         let port = serialport::new(port_path, baud_rate)
             .timeout(Duration::from_millis(100))
@@ -18,4 +18,6 @@ impl ArduinoInformation {
             data_collection: Vec::new(),
         }
     }
+
+    pub fn read_serial(&mut self) {}
 }

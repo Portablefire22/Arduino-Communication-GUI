@@ -1,6 +1,8 @@
 use serialport::SerialPortInfo;
 use std::time::Duration;
 
+use crate::arduino::Arduino;
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -21,6 +23,8 @@ impl Default for TemplateApp {
         }
     }
 }
+
+// https://aryalinux.org/blog/how-to-use-the-serial-port-in-multiple-threads-in
 
 impl TemplateApp {
     /// Called once before the first frame.
@@ -73,14 +77,7 @@ impl eframe::App for TemplateApp {
                     }
                     _ => {
                         for port in ports.unwrap().iter() {
-                            if ui.button(port.port_name.clone()).clicked() {
-                                print_type_of(
-                                    &serialport::new(&port.port_name, 9600)
-                                        .timeout(Duration::from_millis(100))
-                                        .open()
-                                        .expect("Failed to open port"),
-                                );
-                            }
+                            if ui.button(port.port_name.clone()).clicked() && port.port_name.eq() {}
                         }
                     }
                 });
