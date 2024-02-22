@@ -115,9 +115,11 @@ impl eframe::App for TemplateApp {
                                             .read(serial_buffer.as_mut_slice())
                                         {
                                             Ok(t) => {
-                                                let recieved =
+                                                /*let recieved =
                                                     String::from_utf8_lossy(&serial_buffer[..t]);
-                                                println!("{}", recieved);
+                                                println!("{}", recieved);*/
+                                                println!("{:?}", &serial_buffer[..t]);
+                                                println!("----------------");
                                             }
                                             Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                                             Err(_e) => (),

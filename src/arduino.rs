@@ -33,11 +33,18 @@ impl Into<PacketKind> for u8 {
 #[derive(Debug)]
 pub struct Packet {
     packet_type: PacketKind,
+    packet_id: u8, // The arduino will probably send data relating to multiple things, this will
+    // allow for the packet to be assigned to something
+    raw_data: Vec<u8>,
 }
 
 impl Packet {
-    pub fn new(packet_type: PacketKind) -> Self {
-        Self { packet_type }
+    pub fn new(packet_type: PacketKind, packet_id: u8, raw_data: Vec<u8>) -> Self {
+        Self {
+            packet_type,
+            packet_id,
+            raw_data,
+        }
     }
 }
 
@@ -71,9 +78,9 @@ impl Arduino {
         match self.port.read(self.serial_buffer.as_mut_slice()) {
             Ok(t) => {
                 let packet_kind: PacketKind = self.serial_buffer[0].into();
-                packet = Packet::new(packet_kind);
+                //packet = Packet::new(packet_kind);
                 self.flush_buffer().await; // Clear buffer after reading
-                println!("{:?}", packet);
+                                           //println!("{:?}", packet);
             }
             Err(_e) => (), // xd
         }
