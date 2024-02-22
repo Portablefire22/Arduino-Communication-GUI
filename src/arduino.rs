@@ -1,4 +1,4 @@
-use std::{time::Duration, usize};
+use std::{io, time::Duration, usize};
 
 use tokio_serial::SerialPortBuilderExt;
 
@@ -67,6 +67,22 @@ impl Arduino {
         }
     }
 
+    pub async fn read_loop(&mut self) {
+        loop {
+            match self.port.read(self.serial_buffer.as_mut_slice()) {
+                Ok(t) => {
+                    /*let recieved =
+                        String::from_utf8_lossy(&serial_buffer[..t]);
+                    println!("{}", recieved);*/
+                    println!("{:?}", &self.serial_buffer[..t]);
+                    println!("----------------");
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                Err(_e) => (),
+            }
+        }
+    }
+
     pub async fn flush_buffer(&mut self) {
         self.serial_buffer.clear();
     }
@@ -78,7 +94,8 @@ impl Arduino {
         match self.port.read(self.serial_buffer.as_mut_slice()) {
             Ok(t) => {
                 let packet_kind: PacketKind = self.serial_buffer[0].into();
-                //packet = Packet::new(packet_kind);
+                let packet_id: u8 = self.serial_buffer[1];
+                packet = Packet::new(packet_kind, packet_id, self.serial_buffer[2..].to_vec());
                 self.flush_buffer().await; // Clear buffer after reading
                                            //println!("{:?}", packet);
             }

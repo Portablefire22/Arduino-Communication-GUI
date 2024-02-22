@@ -1,9 +1,9 @@
+use crate::arduino::Arduino;
 use std::io::Write;
+use std::sync::Arc;
 use std::{io, ops::Deref, time::Duration};
 use tokio::sync::broadcast;
 use tokio_serial::SerialPortInfo;
-
-use crate::arduino::Arduino;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -21,7 +21,7 @@ pub struct TemplateApp {
     #[serde(skip)]
     rx: broadcast::Receiver<()>,
     #[serde(skip)]
-    arduino: Option<Arduino>,
+    arduino: Arc<Option<Arduino>>,
 }
 
 impl Default for TemplateApp {
@@ -34,7 +34,7 @@ impl Default for TemplateApp {
             selected_port: "Disconnected".to_owned(),
             tx,
             rx,
-            arduino: None,
+            arduino: Arc::new(None::<Arduino>),
         }
     }
 }
@@ -99,32 +99,39 @@ impl eframe::App for TemplateApp {
                                     .clicked()
                                 {
                                     self.selected_port = "Disconnected".to_owned();
-                                    self.arduino = None;
+                                    self.arduino = Arc::new(None::<Arduino>);
                                 }
                             } else {
                                 if ui.button(port.port_name.clone()).clicked() {
                                     self.selected_port = port.port_name.clone();
-                                    self.arduino = Some(Arduino::new(port.port_name.clone(), 9600));
-                                    let mut serial_buffer: Vec<u8> = vec![0; 64];
-                                    loop {
-                                        match self
-                                            .arduino
-                                            .as_mut()
-                                            .unwrap()
-                                            .port
-                                            .read(serial_buffer.as_mut_slice())
-                                        {
-                                            Ok(t) => {
-                                                /*let recieved =
-                                                    String::from_utf8_lossy(&serial_buffer[..t]);
-                                                println!("{}", recieved);*/
-                                                println!("{:?}", &serial_buffer[..t]);
-                                                println!("----------------");
+                                    self.arduino =
+                                        Arc::new(Some(Arduino::new(port.port_name.clone(), 9600)));
+                                    let serial_buffer = vec![0; 32];
+                                    tokio::spawn(async move {
+                                        loop {
+                                            match self
+                                                .arduino
+                                                .as_mut()
+                                                .unwrap()
+                                                .port
+                                                .read(serial_buffer.as_mut_slice())
+                                            {
+                                                Ok(t) => {
+                                                    /*let recieved =
+                                                        String::from_utf8_lossy(&serial_buffer[..t]);
+                                                    println!("{}", recieved);*/
+                                                    println!("{:?}", &serial_buffer[..t]);
+                                                    println!("----------------");
+                                                }
+                                                Err(ref e)
+                                                    if e.kind() == io::ErrorKind::TimedOut =>
+                                                {
+                                                    ()
+                                                }
+                                                Err(_e) => (),
                                             }
-                                            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                                            Err(_e) => (),
                                         }
-                                    }
+                                    });
                                 }
                             }
                         }
@@ -149,7 +156,6 @@ impl eframe::App for TemplateApp {
 
             ui.separator();
             ui.add(egui::Label::new(&self.selected_port));
-            ui.add(egui::Label::new(&format!("{:?}", self.arduino)));
             ui.separator();
 
             ui.add(egui::github_link_file!(
