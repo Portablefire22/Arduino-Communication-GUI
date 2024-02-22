@@ -1,16 +1,23 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+mod app;
 mod arduino;
+use std::sync::{Arc, Mutex};
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
-#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> eframe::Result<()> {
-    use arduino::Arduino;
+    use std::thread;
+
+    use app::TemplateApp;
+    use tokio::sync::mpsc;
 
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
-    let arduino_handler = Arduino::new();
+    let (tx_gui, mut rx_arduino) = mpsc::channel::<arduino::ThreadMSG>(100);
+    let (tx_arduino, mut rx_gui) = mpsc::channel::<arduino::ThreadMSG>(100);
 
+    let arduino_handler = Arc::new(Mutex::new(arduino::Arduino::new()));
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([400.0, 300.0])
@@ -26,7 +33,21 @@ async fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Arduino Communication",
         native_options,
-        Box::new(|cc| Box::new(arduino_communication_gui::TemplateApp::new(cc))),
+        Box::new(|cc| {
+            let frame = cc.egui_ctx.clone();
+            let arduino_thread_handler = arduino_handler.clone();
+            tokio::spawn(async move {
+                loop {
+                    match rx_arduino.recv().await {
+                        Some(t) => {}
+                        None => {
+                            panic!("Transmitter has been dropped!");
+                        }
+                    }
+                }
+            });
+            Box::new(TemplateApp::new(cc, rx_gui, tx_gui, arduino_handler))
+        }),
     )
 }
 

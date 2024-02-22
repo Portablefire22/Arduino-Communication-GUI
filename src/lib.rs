@@ -2,4 +2,3 @@
 
 mod app;
 mod arduino;
-pub use app::TemplateApp;

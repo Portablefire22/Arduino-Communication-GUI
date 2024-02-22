@@ -185,6 +185,7 @@ dependencies = [
  "log",
  "serde",
  "tokio",
+ "tokio-scoped",
  "tokio-serial",
  "wasm-bindgen-futures",
 ]
@@ -2583,6 +2584,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-scoped"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4beb8ba13bc53ac53ce1d52b42f02e5d8060f0f42138862869beb769722b256"
+dependencies = [
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "tokio-serial"
 version = "5.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2592,6 +2603,17 @@ dependencies = [
  "futures",
  "log",
  "mio-serial",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-stream"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "397c988d37662c7dda6d2208364a706264bf3d6138b11d436cbac0ad38832842"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
  "tokio",
 ]
 

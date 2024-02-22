@@ -1,4 +1,4 @@
-use std::{io, time::Duration, usize};
+use std::{io, mem, time::Duration, usize};
 
 use tokio_serial::SerialPortBuilderExt;
 
@@ -9,6 +9,13 @@ pub struct Arduino {
     pub baud_rate: Option<u32>,
     pub data_collection: Vec<Vec<()>>,
     serial_buffer: Vec<u8>,
+}
+
+#[derive(Debug)]
+pub enum ThreadMSG {
+    Start((String, usize)), // Port path & baud rate
+    Data((usize, Vec<u8>)), // Data ID & Data
+    Disconnect(),
 }
 
 #[derive(Debug)]
@@ -75,13 +82,26 @@ impl Arduino {
         self.baud_rate = Some(baud_rate);
     }
 
+    /// Disconnects from the current port
+    pub fn disconnect(&mut self) {
+        match self.port {
+            Some(_) => {
+                self.port = None;
+                self.baud_rate = None;
+            }
+            _ => {
+                eprintln!("Cannot disconnect: Arduino is not connected!");
+            }
+        }
+    }
+
     /// Wipes all data in the buffer and then resizes the buffer
     pub fn modify_buffer_size(&mut self, size: usize) {
         self.serial_buffer.clear();
         self.serial_buffer.resize(size, 0);
     }
 
-    pub async fn read_loop(&mut self) {
+    pub fn read_loop(&mut self) {
         match self.port {
             Some(_) => {
                 loop {

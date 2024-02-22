@@ -1,8 +1,13 @@
+use crate::arduino;
 use crate::arduino::Arduino;
+use crate::arduino::ThreadMSG;
 use std::io::Write;
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::thread;
 use std::{io, ops::Deref, time::Duration};
 use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 use tokio_serial::SerialPortInfo;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -17,16 +22,17 @@ pub struct TemplateApp {
     #[serde(skip)]
     selected_port: String,
     #[serde(skip)]
-    tx: broadcast::Sender<()>,
+    tx: mpsc::Sender<ThreadMSG>,
     #[serde(skip)]
-    rx: broadcast::Receiver<()>,
+    rx: mpsc::Receiver<ThreadMSG>,
     #[serde(skip)]
-    arduino: Arc<Option<Arduino>>,
+    arduino: Arc<Mutex<Arduino>>,
 }
 
 impl Default for TemplateApp {
     fn default() -> Self {
-        let (tx, mut rx) = broadcast::channel(10);
+        let (tx, rx) = mpsc::channel(10);
+
         Self {
             // Example stuff:
             label: "Hello World!".to_owned(),
@@ -34,7 +40,7 @@ impl Default for TemplateApp {
             selected_port: "Disconnected".to_owned(),
             tx,
             rx,
-            arduino: Arc::new(None::<Arduino>),
+            arduino: Arc::new(Mutex::new(Arduino::new())),
         }
     }
 }
@@ -43,17 +49,18 @@ impl Default for TemplateApp {
 
 impl TemplateApp {
     /// Called once before the first frame.
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // This is also where you can customize the look and feel of egui using
-        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-
-        // Load previous app state (if any).
-        // Note that you must enable the `persistence` feature for this to work.
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        rx: mpsc::Receiver<ThreadMSG>,
+        tx: mpsc::Sender<ThreadMSG>,
+        arduino: Arc<Mutex<Arduino>>,
+    ) -> Self {
+        Self {
+            arduino,
+            rx,
+            tx,
+            ..Default::default()
         }
-
-        Default::default()
     }
 }
 
@@ -71,6 +78,7 @@ impl eframe::App for TemplateApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
+        let t = self.tx.clone();
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -99,44 +107,19 @@ impl eframe::App for TemplateApp {
                                     .clicked()
                                 {
                                     self.selected_port = "Disconnected".to_owned();
-                                    self.arduino = Arc::new(None::<Arduino>);
+                                    self.arduino.lock().unwrap().disconnect();
                                 }
                             } else {
                                 if ui.button(port.port_name.clone()).clicked() {
                                     self.selected_port = port.port_name.clone();
-                                    /*self.arduino = Arc::new(Some(Arduino::connect(
-                                        port.port_name.clone(),
-                                        9600,
-                                    )));*/
-                                    let serial_buffer = vec![0; 32];
-                                    tokio::spawn(async move {
-                                        for i in 1..100000 {
-                                            println!("I: {}", i);
-                                        }
-                                        /*loop {
-                                            match self
-                                                .arduino
-                                                .as_mut()
-                                                .unwrap()
-                                                .port
-                                                .read(serial_buffer.as_mut_slice())
-                                            {
-                                                Ok(t) => {
-                                                    /*let recieved =
-                                                        String::from_utf8_lossy(&serial_buffer[..t]);
-                                                    println!("{}", recieved);*/
-                                                    println!("{:?}", &serial_buffer[..t]);
-                                                    println!("----------------");
-                                                }
-                                                Err(ref e)
-                                                    if e.kind() == io::ErrorKind::TimedOut =>
-                                                {
-                                                    ()
-                                                }
-                                                Err(_e) => (),
-                                            }
-                                        }*/
-                                    });
+                                    self.arduino
+                                        .lock()
+                                        .unwrap()
+                                        .connect(self.selected_port.clone(), 9600);
+                                    send_thread_msg(
+                                        self.tx.clone(),
+                                        ThreadMSG::Start((port.port_name.clone(), 9600)),
+                                    );
                                 }
                             }
                         }
@@ -173,6 +156,12 @@ impl eframe::App for TemplateApp {
             });
         });
     }
+}
+
+fn send_thread_msg(tx: mpsc::Sender<ThreadMSG>, msg: ThreadMSG) {
+    tokio::spawn(async move {
+        tx.send(msg).await;
+    });
 }
 
 fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
