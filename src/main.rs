@@ -1,11 +1,15 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-
+mod arduino;
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> eframe::Result<()> {
+    use arduino::Arduino;
+
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+
+    let arduino_handler = Arduino::new();
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

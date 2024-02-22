@@ -104,11 +104,16 @@ impl eframe::App for TemplateApp {
                             } else {
                                 if ui.button(port.port_name.clone()).clicked() {
                                     self.selected_port = port.port_name.clone();
-                                    self.arduino =
-                                        Arc::new(Some(Arduino::new(port.port_name.clone(), 9600)));
+                                    /*self.arduino = Arc::new(Some(Arduino::connect(
+                                        port.port_name.clone(),
+                                        9600,
+                                    )));*/
                                     let serial_buffer = vec![0; 32];
                                     tokio::spawn(async move {
-                                        loop {
+                                        for i in 1..100000 {
+                                            println!("I: {}", i);
+                                        }
+                                        /*loop {
                                             match self
                                                 .arduino
                                                 .as_mut()
@@ -130,7 +135,7 @@ impl eframe::App for TemplateApp {
                                                 }
                                                 Err(_e) => (),
                                             }
-                                        }
+                                        }*/
                                     });
                                 }
                             }
