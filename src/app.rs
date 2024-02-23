@@ -1,14 +1,8 @@
-use crate::arduino;
 use crate::arduino::Arduino;
 use crate::arduino::ThreadMSG;
-use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread;
-use std::{io, ops::Deref, time::Duration};
-use tokio::sync::broadcast;
 use tokio::sync::mpsc;
-use tokio_serial::SerialPortInfo;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]

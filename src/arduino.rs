@@ -1,6 +1,7 @@
 use std::{io, mem, time::Duration, usize};
 
-use tokio::{io::Empty, sync::mpsc};
+use colored::Colorize;
+use tokio::sync::mpsc;
 use tokio_serial::SerialPortBuilderExt;
 
 #[derive(Debug)]
@@ -104,22 +105,7 @@ impl Arduino {
         match self.port {
             Some(_) => {
                 loop {
-                    match self
-                        .port
-                        .as_mut()
-                        .unwrap()
-                        .read(self.serial_buffer.as_mut_slice())
-                    {
-                        Ok(t) => {
-                            /*let recieved =
-                                String::from_utf8_lossy(&serial_buffer[..t]);
-                            println!("{}", recieved);*/
-                            println!("{:?}", &self.serial_buffer[..t]);
-                            println!("----------------");
-                        }
-                        Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-                        Err(_e) => (),
-                    }
+                    self.read_from_serial_packet();
 
                     // Break if a disconnect message is sent
                     match rx.try_recv() {
@@ -144,7 +130,7 @@ impl Arduino {
 
     /// Reads from the serial data, determines the type from the first byte and then calls the
     /// appropriate read function
-    pub async fn read_from_serial_packet(&mut self) {
+    pub fn read_from_serial_packet(&mut self) {
         let packet: Packet;
         match self
             .port
@@ -155,9 +141,23 @@ impl Arduino {
             Ok(t) => {
                 let packet_kind: PacketKind = self.serial_buffer[0].into();
                 let packet_id: u8 = self.serial_buffer[1];
-                packet = Packet::new(packet_kind, packet_id, self.serial_buffer[2..].to_vec());
-                self.flush_buffer().await; // Clear buffer after reading
-                                           //println!("{:?}", packet);
+                let mut tmp_vec: Vec<u8> = vec![0; self.serial_buffer.len() - 3];
+                let mut j = 0;
+                for i in self.serial_buffer[2..].into_iter() {
+                    if *i == 0x0D {
+                        if j != self.serial_buffer.len() - 3 {
+                            eprintln!(
+                                "{}",
+                                "Packet ended too early!\nChances are you have a raw 0x0D (13) in the data somewhere!".red()
+                            );
+                        }
+                        break;
+                    }
+                    tmp_vec[j] = *i;
+                    j += 1;
+                }
+                packet = Packet::new(packet_kind, packet_id, tmp_vec);
+                println!("{:?}", packet);
             }
             Err(_e) => (), // xd
         }
