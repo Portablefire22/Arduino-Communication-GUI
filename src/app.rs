@@ -46,11 +46,11 @@ impl Default for TemplateApp {
 impl TemplateApp {
     /// Called once before the first frame.
     pub fn new(
-        cc: &eframe::CreationContext<'_>,
+        _cc: &eframe::CreationContext<'_>,
         rx: mpsc::Receiver<ThreadMSG>,
         tx: mpsc::Sender<ThreadMSG>,
         arduino: Arc<Mutex<Arduino>>,
-        data_collection: Arc<Mutex<Vec<Vec<usize>>>>,
+        _data_collection: Arc<Mutex<Vec<Vec<usize>>>>,
     ) -> Self {
         Self {
             arduino,
@@ -75,7 +75,7 @@ impl eframe::App for TemplateApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
-        let t = self.tx.clone();
+        let _t = self.tx.clone();
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:

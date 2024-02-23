@@ -1,4 +1,4 @@
-use std::{io, mem, time::Duration, usize};
+use std::{time::Duration, usize};
 
 use colored::Colorize;
 use tokio::sync::mpsc;
@@ -138,7 +138,7 @@ impl Arduino {
             .unwrap()
             .read(self.serial_buffer.as_mut_slice())
         {
-            Ok(t) => {
+            Ok(_t) => {
                 let packet_kind: PacketKind = self.serial_buffer[0].into();
                 let packet_id: u8 = self.serial_buffer[1];
                 let mut tmp_vec: Vec<u8> = vec![0; self.serial_buffer.len() - 3];

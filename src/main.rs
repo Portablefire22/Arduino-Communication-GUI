@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> eframe::Result<()> {
-    use std::thread;
+    
 
     use app::TemplateApp;
     use tokio::sync::mpsc;
@@ -15,7 +15,7 @@ async fn main() -> eframe::Result<()> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let (tx_gui, mut rx_arduino) = mpsc::channel::<arduino::ThreadMSG>(100);
-    let (tx_arduino, mut rx_gui) = mpsc::channel::<arduino::ThreadMSG>(100);
+    let (_tx_arduino, rx_gui) = mpsc::channel::<arduino::ThreadMSG>(100);
 
     let arduino_handler = Arc::new(Mutex::new(arduino::Arduino::new()));
 
@@ -37,9 +37,9 @@ async fn main() -> eframe::Result<()> {
         "Arduino Communication",
         native_options,
         Box::new(|cc| {
-            let frame = cc.egui_ctx.clone();
+            let _frame = cc.egui_ctx.clone();
             let arduino_thread_handler = arduino_handler.clone();
-            let data_ard = data.clone();
+            let _data_ard = data.clone();
             tokio::spawn(async move {
                 loop {
                     match rx_arduino.recv().await {
