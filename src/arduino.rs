@@ -19,7 +19,7 @@ pub enum ThreadMSG {
     Disconnect(),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum PacketKind {
     String,
     Integer,
@@ -140,6 +140,11 @@ impl Arduino {
         {
             Ok(_t) => {
                 let packet_kind: PacketKind = self.serial_buffer[0].into();
+                if packet_kind == PacketKind::Unknown {
+                    // Unknown packets are likely corrupt and
+                    // will cause a panic, so let's just return
+                    return;
+                };
                 let packet_id: u8 = self.serial_buffer[1];
                 let mut tmp_vec: Vec<u8> = vec![0; self.serial_buffer.len() - 3];
                 let mut j = 0;

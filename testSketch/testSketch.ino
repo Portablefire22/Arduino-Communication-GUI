@@ -51,13 +51,15 @@ void setup() {
   Serial.begin(9600);
   pinMode(13, OUTPUT);
   uint8_t data[30];
-  for (int i=0; i<29; i++) {
-    data[i] = i;
+  for (int i=2; i<29; i++) {
+    data[i] = i + 30;
   }
-  pack = packet_handler->create_packet(4, 1, data);
+  pack = packet_handler->create_packet(3, 1, data);
 }
 
 void loop() {
   packet_handler->send_packet(pack);
   delay(1000);
 }
+
+// arduino-cli compile --fqbn arduino:avr:uno testSketch && arduino-cli upload testSketch -p /dev/ttyUSB0 -b arduino:avr:uno    
