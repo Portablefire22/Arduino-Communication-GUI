@@ -18,6 +18,9 @@ async fn main() -> eframe::Result<()> {
     let (tx_arduino, mut rx_gui) = mpsc::channel::<arduino::ThreadMSG>(100);
 
     let arduino_handler = Arc::new(Mutex::new(arduino::Arduino::new()));
+
+    let data = Arc::new(Mutex::new(Vec::new()));
+
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([400.0, 300.0])
@@ -36,17 +39,34 @@ async fn main() -> eframe::Result<()> {
         Box::new(|cc| {
             let frame = cc.egui_ctx.clone();
             let arduino_thread_handler = arduino_handler.clone();
+            let data_ard = data.clone();
             tokio::spawn(async move {
                 loop {
                     match rx_arduino.recv().await {
-                        Some(t) => {}
+                        Some(msg) => match msg {
+                            arduino::ThreadMSG::Start((port, baud)) => {
+                                arduino_thread_handler
+                                    .lock()
+                                    .unwrap()
+                                    .connect(port, baud as u32);
+                                arduino_thread_handler
+                                    .lock()
+                                    .unwrap()
+                                    .read_loop(&mut rx_arduino);
+                            }
+                            arduino::ThreadMSG::Data(..) => {}
+                            arduino::ThreadMSG::Disconnect() => {
+                                arduino_thread_handler.lock().unwrap().disconnect();
+                            }
+                            _ => panic!("Invalid message sent to arduino thread!"),
+                        },
                         None => {
                             panic!("Transmitter has been dropped!");
                         }
                     }
                 }
             });
-            Box::new(TemplateApp::new(cc, rx_gui, tx_gui, arduino_handler))
+            Box::new(TemplateApp::new(cc, rx_gui, tx_gui, arduino_handler, data))
         }),
     )
 }

@@ -1,5 +1,6 @@
 use std::{io, mem, time::Duration, usize};
 
+use tokio::{io::Empty, sync::mpsc};
 use tokio_serial::SerialPortBuilderExt;
 
 #[derive(Debug)]
@@ -7,7 +8,6 @@ use tokio_serial::SerialPortBuilderExt;
 pub struct Arduino {
     pub port: Option<Box<dyn tokio_serial::SerialPort>>,
     pub baud_rate: Option<u32>,
-    pub data_collection: Vec<Vec<()>>,
     serial_buffer: Vec<u8>,
 }
 
@@ -61,7 +61,6 @@ impl Arduino {
         Self {
             port: None,
             baud_rate: None,
-            data_collection: Vec::new(),
             serial_buffer: vec![0; 32],
         }
     }
@@ -101,7 +100,7 @@ impl Arduino {
         self.serial_buffer.resize(size, 0);
     }
 
-    pub fn read_loop(&mut self) {
+    pub fn read_loop(&mut self, rx: &mut mpsc::Receiver<ThreadMSG>) {
         match self.port {
             Some(_) => {
                 loop {
@@ -120,6 +119,16 @@ impl Arduino {
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                         Err(_e) => (),
+                    }
+
+                    // Break if a disconnect message is sent
+                    match rx.try_recv() {
+                        Err(mpsc::error::TryRecvError::Empty) => {}
+                        Err(mpsc::error::TryRecvError::Disconnected) => break,
+                        Ok(t) => match t {
+                            ThreadMSG::Disconnect() => break,
+                            _ => {}
+                        },
                     }
                 }
             }

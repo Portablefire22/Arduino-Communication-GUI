@@ -16,7 +16,8 @@ use tokio_serial::SerialPortInfo;
 pub struct TemplateApp {
     // Example stuff:
     label: String,
-
+    #[serde(skip)]
+    pub data_collection: Arc<Mutex<Vec<Vec<()>>>>,
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
     #[serde(skip)]
@@ -41,6 +42,7 @@ impl Default for TemplateApp {
             tx,
             rx,
             arduino: Arc::new(Mutex::new(Arduino::new())),
+            data_collection: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -54,6 +56,7 @@ impl TemplateApp {
         rx: mpsc::Receiver<ThreadMSG>,
         tx: mpsc::Sender<ThreadMSG>,
         arduino: Arc<Mutex<Arduino>>,
+        data_collection: Arc<Mutex<Vec<Vec<usize>>>>,
     ) -> Self {
         Self {
             arduino,
@@ -107,7 +110,7 @@ impl eframe::App for TemplateApp {
                                     .clicked()
                                 {
                                     self.selected_port = "Disconnected".to_owned();
-                                    self.arduino.lock().unwrap().disconnect();
+                                    send_thread_msg(self.tx.clone(), ThreadMSG::Disconnect());
                                 }
                             } else {
                                 if ui.button(port.port_name.clone()).clicked() {
