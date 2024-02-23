@@ -12,7 +12,7 @@ pub struct Arduino {
     serial_buffer: Vec<u8>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ThreadMSG {
     Start((String, usize)), // Port path & baud rate
     Data((usize, Vec<u8>)), // Data ID & Data
@@ -22,7 +22,8 @@ pub enum ThreadMSG {
 #[derive(Debug, PartialEq)]
 pub enum PacketKind {
     String,
-    Integer,
+    PosInteger,
+    NegInteger,
     Binary,
     Unknown,
 }
@@ -31,8 +32,9 @@ impl Into<PacketKind> for u8 {
     fn into(self) -> PacketKind {
         match self {
             1 => PacketKind::String,
-            2 => PacketKind::Integer,
-            3 => PacketKind::Binary,
+            2 => PacketKind::PosInteger,
+            3 => PacketKind::NegInteger,
+            4 => PacketKind::Binary,
             _ => PacketKind::Unknown,
         }
     }
@@ -145,6 +147,14 @@ impl Arduino {
                     // will cause a panic, so let's just return
                     return;
                 };
+
+                if packet_kind == PacketKind::NegInteger {
+                    println!("{}", (self.serial_buffer[2] as i16) - 256); // negative numbers are
+                                                                          // sent as the int max
+                                                                          // minus the positive
+                                                                          // value of the number
+                }
+
                 let packet_id: u8 = self.serial_buffer[1];
                 let mut tmp_vec: Vec<u8> = vec![0; self.serial_buffer.len() - 3];
                 let mut j = 0;

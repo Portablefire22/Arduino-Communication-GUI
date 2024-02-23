@@ -7,8 +7,6 @@ use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> eframe::Result<()> {
-    
-
     use app::TemplateApp;
     use tokio::sync::mpsc;
 

@@ -1,5 +1,6 @@
 use crate::arduino::Arduino;
 use crate::arduino::ThreadMSG;
+use colored::Colorize;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::mpsc;
@@ -157,7 +158,16 @@ impl eframe::App for TemplateApp {
 
 fn send_thread_msg(tx: mpsc::Sender<ThreadMSG>, msg: ThreadMSG) {
     tokio::spawn(async move {
-        tx.send(msg).await;
+        match tx.send(msg.clone()).await {
+            Err(t) => eprintln!(
+                "{} '{:?}' {}\n{}!",
+                "Could not send".red(),
+                &msg,
+                "to Arduino thread!".red(),
+                t,
+            ),
+            _ => (),
+        };
     });
 }
 
