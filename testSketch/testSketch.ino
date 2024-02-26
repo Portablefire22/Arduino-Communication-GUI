@@ -76,8 +76,8 @@ void loop() {
   int16_t t = 255;
   int8_t data[2];
   packet_handler->convert_u16(t, data);
-  pack = packet_handler->create_packet(2, 0);
-  packet_handler->set_data(&pack, &data[0], array_length(data));
+  pack = packet_handler->create_packet(1, 0);
+  packet_handler->set_data(&pack, "Testing", array_length("Testing"));
   packet_handler->send_packet(pack);
   delay(1000);
 }

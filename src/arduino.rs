@@ -174,10 +174,10 @@ impl Arduino {
                 packet = Packet::new(packet_kind, packet_id, tmp_vec);
                 println!("{:?}", packet);
                 match packet.packet_type {
-                    PacketKind::String => (),
+                    PacketKind::String => self.read_string_from_serial(&mut packet),
                     PacketKind::PosInteger => self.read_integer_from_serial(false, &mut packet),
                     PacketKind::NegInteger => self.read_integer_from_serial(true, &mut packet),
-                    PacketKind::Binary => (),
+                    PacketKind::Binary => (), // Not implemented, not sure if this is needed
                     _ => unreachable!(),
                 }
             }
@@ -186,7 +186,13 @@ impl Arduino {
     }
 
     /// Read serial and convert the data to a utf-8 ASCII string
-    pub async fn read_string_from_serial(&mut self) {}
+    pub fn read_string_from_serial(&mut self, packet: &mut Packet) {
+        let mut tmp_string: String = "".to_owned();
+        for byte in (&packet.raw_data).into_iter() {
+            tmp_string.push(*byte as char);
+        }
+        packet.constructed_data = PacketData::String(tmp_string, Instant::now());
+    }
 
     /// Reads serial and converts the data to an integer, boolean determines
     /// if the integer is positive or negative
