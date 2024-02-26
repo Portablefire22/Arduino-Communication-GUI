@@ -1,4 +1,7 @@
-use std::{time::Duration, usize};
+use std::{
+    time::{Duration, Instant},
+    usize,
+};
 
 use colored::Colorize;
 use tokio::sync::mpsc;
@@ -13,13 +16,20 @@ pub struct Arduino {
 }
 
 #[derive(Debug, Clone)]
+pub enum PacketData {
+    Integer(isize, Instant),
+    String(String, Instant),
+    None(),
+}
+
+#[derive(Debug, Clone)]
 pub enum ThreadMSG {
     Start((String, usize)), // Port path & baud rate
     Data((usize, Vec<u8>)), // Data ID & Data
     Disconnect(),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PacketKind {
     String,
     PosInteger,
@@ -46,6 +56,7 @@ pub struct Packet {
     packet_id: u8, // The arduino will probably send data relating to multiple things, this will
     // allow for the packet to be assigned to something
     raw_data: Vec<u8>,
+    constructed_data: PacketData,
 }
 
 impl Packet {
@@ -54,6 +65,7 @@ impl Packet {
             packet_type,
             packet_id,
             raw_data,
+            constructed_data: PacketData::None(),
         }
     }
 }
@@ -133,7 +145,7 @@ impl Arduino {
     /// Reads from the serial data, determines the type from the first byte and then calls the
     /// appropriate read function
     pub fn read_from_serial_packet(&mut self) {
-        let packet: Packet;
+        let mut packet: Packet;
         match self
             .port
             .as_mut()
@@ -145,34 +157,29 @@ impl Arduino {
                 if packet_kind == PacketKind::Unknown {
                     // Unknown packets are likely corrupt and
                     // will cause a panic, so let's just return
+                    eprintln!("Packet Errror: Recevied packet with unknown type!");
                     return;
                 };
-
-                if packet_kind == PacketKind::NegInteger {
-                    println!("{}", (self.serial_buffer[2] as i16) - 256); // negative numbers are
-                                                                          // sent as the int max
-                                                                          // minus the positive
-                                                                          // value of the number
-                }
-
                 let packet_id: u8 = self.serial_buffer[1];
                 let mut tmp_vec: Vec<u8> = vec![0; self.serial_buffer.len() - 3];
                 let mut j = 0;
                 for i in self.serial_buffer[2..].into_iter() {
                     if *i == 0x0D {
-                        if j != self.serial_buffer.len() - 3 {
-                            eprintln!(
-                                "{}",
-                                "Packet ended too early!\nChances are you have a raw 0x0D (13) in the data somewhere!".red()
-                            );
-                        }
                         break;
                     }
                     tmp_vec[j] = *i;
                     j += 1;
                 }
+                tmp_vec.resize(j, 0);
                 packet = Packet::new(packet_kind, packet_id, tmp_vec);
                 println!("{:?}", packet);
+                match packet.packet_type {
+                    PacketKind::String => (),
+                    PacketKind::PosInteger => self.read_integer_from_serial(false, &mut packet),
+                    PacketKind::NegInteger => self.read_integer_from_serial(true, &mut packet),
+                    PacketKind::Binary => (),
+                    _ => unreachable!(),
+                }
             }
             Err(_e) => (), // xd
         }
@@ -181,8 +188,40 @@ impl Arduino {
     /// Read serial and convert the data to a utf-8 ASCII string
     pub async fn read_string_from_serial(&mut self) {}
 
-    /// Reads serial and converts the data to an integer
-    pub async fn read_integer_from_serial(&mut self) {}
+    /// Reads serial and converts the data to an integer, boolean determines
+    /// if the integer is positive or negative
+    pub fn read_integer_from_serial(&mut self, is_negative: bool, packet: &mut Packet) {
+        let mut tmp = 0;
+        let max_bytes = isize::BITS / 8;
+        for (i, byte) in (&packet.raw_data).into_iter().enumerate() {
+            let mut tmp_byte = byte.clone() as i16;
+            if is_negative {
+                if tmp_byte == 0 {
+                    continue;
+                }
+                tmp_byte -= 0xFF;
+                if i == 0 {
+                    // Two's compliment ?
+                    tmp_byte -= 1;
+                }
+            }
+            if i == max_bytes
+                .try_into()
+                .expect("Packet integer exceeds the integer limit!")
+            {
+                tmp += (tmp_byte as isize) << ((i * 8) - 1);
+            } else if i > max_bytes
+                .try_into()
+                .expect("Packet integer exceeds the integer limit!")
+            {
+                eprintln!("Integer exceeds the integer limit, stopping!");
+                break;
+            } else {
+                tmp += (tmp_byte as isize) << i * 8;
+            }
+        }
+        packet.constructed_data = PacketData::Integer(tmp, Instant::now());
+    }
 
     /// Reads the raw binary from serial
     pub async fn read_binary_from_serial(&mut self) {}
