@@ -2,6 +2,7 @@ use crate::arduino::Arduino;
 use crate::arduino::PacketData;
 use crate::arduino::ThreadMSG;
 use colored::Colorize;
+use egui::vec2;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::usize;
@@ -143,15 +144,24 @@ impl eframe::App for TemplateApp {
             if ui.button("Increment").clicked() {
                 self.value += 1.0;
             }
-
+            let mut window = egui::Window::new(format!("Arduino | {}", &self.selected_port))
+                .constrain(true)
+                .title_bar(true)
+                .resizable(true)
+                .scroll2(true)
+                .min_size(vec2(500.0, 300.0))
+                .enabled(true);
             ui.separator();
             ui.add(egui::Label::new(&self.selected_port));
             ui.separator();
-            for v in self.data_collection.lock().unwrap().iter() {
-                for v_exp in v.iter() {
-                    ui.add(egui::Label::new(format!("{:?}", v_exp)));
+            window.show(&ctx, |ui| {
+                ui.add(egui::Label::new("Arduino Data"));
+                for v in self.data_collection.lock().unwrap().iter() {
+                    for v_exp in v.iter() {
+                        ui.add(egui::Label::new(format!("{:?}", v_exp)));
+                    }
                 }
-            }
+            });
             ui.separator();
             ui.add(egui::github_link_file!(
                 "https://github.com/Portablefire22/Arduino-Communication-GUI/blob/master/",
