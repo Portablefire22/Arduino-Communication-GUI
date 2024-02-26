@@ -73,13 +73,17 @@ void setup() {
 
 void loop() {
   //packet_handler->send_packet(pack);
-  int16_t t = 255;
+  int16_t t = -5325;
   int8_t data[2];
   packet_handler->convert_u16(t, data);
   pack = packet_handler->create_packet(1, 0);
   packet_handler->set_data(&pack, "Testing", array_length("Testing"));
   packet_handler->send_packet(pack);
-  delay(1000);
+  delay(10);
+  pack = packet_handler->create_packet(3, 1);
+  packet_handler->set_data(&pack, data, array_length(data));
+  packet_handler->send_packet(pack);
+  delay(250);
 }
 
 // arduino-cli compile --fqbn arduino:avr:uno testSketch && arduino-cli upload testSketch -p /dev/ttyUSB0 -b arduino:avr:uno    
