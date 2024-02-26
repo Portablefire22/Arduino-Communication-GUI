@@ -13,7 +13,7 @@ async fn main() -> eframe::Result<()> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let (tx_gui, mut rx_arduino) = mpsc::channel::<arduino::ThreadMSG>(100);
-    let (_tx_arduino, rx_gui) = mpsc::channel::<arduino::ThreadMSG>(100);
+    let (tx_arduino, rx_gui) = mpsc::channel::<arduino::ThreadMSG>(100);
 
     let arduino_handler = Arc::new(Mutex::new(arduino::Arduino::new()));
 
@@ -50,7 +50,7 @@ async fn main() -> eframe::Result<()> {
                                 arduino_thread_handler
                                     .lock()
                                     .unwrap()
-                                    .read_loop(&mut rx_arduino);
+                                    .read_loop(&mut rx_arduino, tx_arduino.clone());
                             }
                             arduino::ThreadMSG::Data(..) => {}
                             arduino::ThreadMSG::Disconnect() => {

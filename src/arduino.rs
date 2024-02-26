@@ -1,5 +1,5 @@
 use std::{
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
     usize,
 };
 
@@ -17,15 +17,15 @@ pub struct Arduino {
 
 #[derive(Debug, Clone)]
 pub enum PacketData {
-    Integer(isize, Instant),
-    String(String, Instant),
+    Integer(isize, u8, SystemTime),
+    String(String, u8, SystemTime),
     None(),
 }
 
 #[derive(Debug, Clone)]
 pub enum ThreadMSG {
     Start((String, usize)), // Port path & baud rate
-    Data((usize, Vec<u8>)), // Data ID & Data
+    Data(PacketData),       // Data ID & Data
     Disconnect(),
 }
 
@@ -115,11 +115,11 @@ impl Arduino {
         self.serial_buffer.resize(size, 0);
     }
 
-    pub fn read_loop(&mut self, rx: &mut mpsc::Receiver<ThreadMSG>) {
+    pub fn read_loop(&mut self, rx: &mut mpsc::Receiver<ThreadMSG>, tx: mpsc::Sender<ThreadMSG>) {
         match self.port {
             Some(_) => {
                 loop {
-                    self.read_from_serial_packet();
+                    self.read_from_serial_packet(tx.clone());
 
                     // Break if a disconnect message is sent
                     match rx.try_recv() {
@@ -144,7 +144,7 @@ impl Arduino {
 
     /// Reads from the serial data, determines the type from the first byte and then calls the
     /// appropriate read function
-    pub fn read_from_serial_packet(&mut self) {
+    pub fn read_from_serial_packet(&mut self, tx: mpsc::Sender<ThreadMSG>) {
         let mut packet: Packet;
         match self
             .port
@@ -172,7 +172,6 @@ impl Arduino {
                 }
                 tmp_vec.resize(j, 0);
                 packet = Packet::new(packet_kind, packet_id, tmp_vec);
-                println!("{:?}", packet);
                 match packet.packet_type {
                     PacketKind::String => self.read_string_from_serial(&mut packet),
                     PacketKind::PosInteger => self.read_integer_from_serial(false, &mut packet),
@@ -180,6 +179,7 @@ impl Arduino {
                     PacketKind::Binary => (), // Not implemented, not sure if this is needed
                     _ => unreachable!(),
                 }
+                crate::app::send_thread_msg(tx, ThreadMSG::Data(packet.constructed_data));
             }
             Err(_e) => (), // xd
         }
@@ -189,9 +189,12 @@ impl Arduino {
     pub fn read_string_from_serial(&mut self, packet: &mut Packet) {
         let mut tmp_string: String = "".to_owned();
         for byte in (&packet.raw_data).into_iter() {
-            tmp_string.push(*byte as char);
+            if *byte != 0 {
+                tmp_string.push(*byte as char);
+            }
         }
-        packet.constructed_data = PacketData::String(tmp_string, Instant::now());
+        packet.constructed_data =
+            PacketData::String(tmp_string, packet.packet_id, SystemTime::now());
     }
 
     /// Reads serial and converts the data to an integer, boolean determines
@@ -226,7 +229,7 @@ impl Arduino {
                 tmp += (tmp_byte as isize) << i * 8;
             }
         }
-        packet.constructed_data = PacketData::Integer(tmp, Instant::now());
+        packet.constructed_data = PacketData::Integer(tmp, packet.packet_id, SystemTime::now());
     }
 
     /// Reads the raw binary from serial

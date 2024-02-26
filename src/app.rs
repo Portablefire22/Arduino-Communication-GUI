@@ -1,9 +1,12 @@
 use crate::arduino::Arduino;
+use crate::arduino::PacketData;
 use crate::arduino::ThreadMSG;
 use colored::Colorize;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::usize;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::TryRecvError;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -12,7 +15,7 @@ pub struct TemplateApp {
     // Example stuff:
     label: String,
     #[serde(skip)]
-    pub data_collection: Arc<Mutex<Vec<Vec<()>>>>,
+    pub data_collection: Arc<Mutex<Vec<Vec<PacketData>>>>,
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
     #[serde(skip)]
@@ -143,20 +146,56 @@ impl eframe::App for TemplateApp {
             ui.separator();
             ui.add(egui::Label::new(&self.selected_port));
             ui.separator();
-
+            for v in self.data_collection.lock().unwrap().iter() {
+                for v_exp in v.iter() {
+                    ui.add(egui::Label::new(format!("{:?}", v_exp)));
+                }
+            }
+            ui.separator();
             ui.add(egui::github_link_file!(
                 "https://github.com/Portablefire22/Arduino-Communication-GUI/blob/master/",
-                "Source code"
+                "Source code (Private)"
             ));
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 egui::warn_if_debug_build(ui);
             });
         });
+        match self.rx.try_recv() {
+            Err(TryRecvError::Disconnected) => (), // TODO, error message as pop-up
+            Err(_) => (),
+            Ok(t) => match t {
+                ThreadMSG::Data(data) => match data {
+                    PacketData::String(_, id, _time) | PacketData::Integer(_, id, _time) => {
+                        match self.data_collection.lock() {
+                            Ok(mut t) => match t.get(id as usize) {
+                                None => {
+                                    if id == 0 {
+                                        t.resize(1, Vec::new());
+                                    } else {
+                                        t.resize(id as usize, Vec::new());
+                                    }
+                                    t[id as usize].push(data);
+                                }
+                                Some(_) => {
+                                    t[id as usize].push(data);
+                                }
+                            },
+                            Err(_) => {
+                                eprintln!("Mutex error: Error unlocking whilst retrieving data")
+                            } //self.data_collection.lock().unwrap().resize(id as usize, );
+                              //self.data_collection.lock().unwrap()[id as usize].push(data);
+                        }
+                    }
+                    _ => (),
+                },
+                _ => (),
+            },
+        }
     }
 }
 
-fn send_thread_msg(tx: mpsc::Sender<ThreadMSG>, msg: ThreadMSG) {
+pub fn send_thread_msg(tx: mpsc::Sender<ThreadMSG>, msg: ThreadMSG) {
     tokio::spawn(async move {
         match tx.send(msg.clone()).await {
             Err(t) => eprintln!(
