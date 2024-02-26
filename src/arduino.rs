@@ -164,7 +164,7 @@ impl Arduino {
                 let mut tmp_vec: Vec<u8> = vec![0; self.serial_buffer.len() - 3];
                 let mut j = 0;
                 for i in self.serial_buffer[2..].into_iter() {
-                    if *i == 0x0D {
+                    if *i == 0x0D || j == tmp_vec.len() {
                         break;
                     }
                     tmp_vec[j] = *i;
