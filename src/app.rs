@@ -131,7 +131,6 @@ impl eframe::App for TemplateApp {
             ui.add(egui::Label::new(&self.selected_port));
             ui.separator();
             window.show(&ctx, |ui| {
-                ui.add(egui::Label::new("Arduino Data"));
                 for v in self.data_collection.lock().unwrap().iter() {
                     for v_exp in v.iter() {
                         ui.add(egui::Label::new(format!("{:?}", v_exp)));
