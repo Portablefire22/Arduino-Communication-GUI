@@ -2,6 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 mod app;
 mod arduino;
+mod data_window;
+mod error_message;
 use std::sync::{Arc, Mutex};
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]

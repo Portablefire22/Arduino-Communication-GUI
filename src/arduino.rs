@@ -17,9 +17,19 @@ pub struct Arduino {
 
 #[derive(Debug, Clone)]
 pub enum PacketData {
-    Integer(isize, u8, SystemTime),
-    String(String, u8, SystemTime),
+    Integer(isize, u8, Instant),
+    String(String, u8, Instant),
     None(),
+}
+
+impl PacketData {
+    pub fn display_variant(&self) -> &str {
+        match self {
+            Self::Integer(_, _, _) => "Integer",
+            Self::String(_, _, _) => "String",
+            _ => "None",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -193,8 +203,7 @@ impl Arduino {
                 tmp_string.push(*byte as char);
             }
         }
-        packet.constructed_data =
-            PacketData::String(tmp_string, packet.packet_id, SystemTime::now());
+        packet.constructed_data = PacketData::String(tmp_string, packet.packet_id, Instant::now());
     }
 
     /// Reads serial and converts the data to an integer, boolean determines
@@ -229,7 +238,7 @@ impl Arduino {
                 tmp += (tmp_byte as isize) << i * 8;
             }
         }
-        packet.constructed_data = PacketData::Integer(tmp, packet.packet_id, SystemTime::now());
+        packet.constructed_data = PacketData::Integer(tmp, packet.packet_id, Instant::now());
     }
 
     /// Reads the raw binary from serial

@@ -1,4 +1,7 @@
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
+
+uint16_t temp_count = 0;
+
 struct Packet {
     uint8_t PacketKind; // What type of packet it is
     uint8_t PacketId;
@@ -80,10 +83,18 @@ void loop() {
   packet_handler->set_data(&pack, "Testing", array_length("Testing"));
   packet_handler->send_packet(pack);
   delay(10);
-  pack = packet_handler->create_packet(3, 1);
-  packet_handler->set_data(&pack, data, array_length(data));
+  if (temp_count % 3) {
+    packet_handler->convert_u16(500, data);
+    pack = packet_handler->create_packet(2, 1);
+    packet_handler->set_data(&pack, data, array_length(data));
+  } else {
+    packet_handler->convert_u16(-500, data);
+    pack = packet_handler->create_packet(3, 1);
+    packet_handler->set_data(&pack, data, array_length(data));
+  }
+  temp_count++;
   packet_handler->send_packet(pack);
-  delay(250);
+  delay(1000);
 }
 
 // arduino-cli compile --fqbn arduino:avr:uno testSketch && arduino-cli upload testSketch -p /dev/ttyUSB0 -b arduino:avr:uno    
