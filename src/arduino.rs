@@ -19,6 +19,7 @@ pub struct Arduino {
 pub enum PacketData {
     Integer(isize, u8, Instant),
     String(String, u8, Instant),
+    Float(f64, u8, Instant),
     None(),
 }
 
@@ -27,6 +28,7 @@ impl PacketData {
         match self {
             Self::Integer(_, _, _) => "Integer",
             Self::String(_, _, _) => "String",
+            Self::Float(_, _, _) => "Float",
             _ => "None",
         }
     }
@@ -45,6 +47,7 @@ pub enum PacketKind {
     PosInteger,
     NegInteger,
     Binary,
+    Float,
     Unknown,
 }
 
@@ -55,6 +58,7 @@ impl Into<PacketKind> for u8 {
             2 => PacketKind::PosInteger,
             3 => PacketKind::NegInteger,
             4 => PacketKind::Binary,
+            5 => PacketKind::Float,
             _ => PacketKind::Unknown,
         }
     }
@@ -187,6 +191,7 @@ impl Arduino {
                     PacketKind::PosInteger => self.read_integer_from_serial(false, &mut packet),
                     PacketKind::NegInteger => self.read_integer_from_serial(true, &mut packet),
                     PacketKind::Binary => (), // Not implemented, not sure if this is needed
+                    PacketKind::Float => self.read_float_from_serial(&mut packet),
                     _ => unreachable!(),
                 }
                 crate::app::send_thread_msg(tx, ThreadMSG::Data(packet.constructed_data));
@@ -204,6 +209,21 @@ impl Arduino {
             }
         }
         packet.constructed_data = PacketData::String(tmp_string, packet.packet_id, Instant::now());
+    }
+
+    /// Reads serial, converts tp a string and then parses to float
+    pub fn read_float_from_serial(&mut self, packet: &mut Packet) {
+        let mut tmp_string: String = "".to_owned();
+        for byte in (&packet.raw_data).into_iter() {
+            if *byte != 0 {
+                tmp_string.push(*byte as char);
+            }
+        }
+        packet.constructed_data = PacketData::Float(
+            tmp_string.parse::<f64>().unwrap(),
+            packet.packet_id,
+            Instant::now(),
+        );
     }
 
     /// Reads serial and converts the data to an integer, boolean determines

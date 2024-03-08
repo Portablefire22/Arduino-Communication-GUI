@@ -15,6 +15,8 @@
 #define MOTOR_IN2 4
 #define MOTOR_EN 5
 
+#define LOAD_CELL_PIN_IN A2
+
 //
 // BLE 
 //
@@ -24,10 +26,14 @@ BLEService AinService("4315b8fb-7cca-4ba6-a4c0-c3c0c915180f"); //This is a custo
 //and new codes can be obtained from
 //https://www.guidgenerator.com/online-guid-generator.aspx
 //Add the characteristic - the example is a floating point number - give it a name
-BLEFloatCharacteristic Rev("4315b8fb-7cca-4ba6-a4c0-c3c0c915180f", BLEWrite | BLENotify | BLERead | BLEBroadcast); 
+BLEIntCharacteristic Rev("4315b8fb-7cca-4ba6-a4c0-c3c0c915180f", BLEWrite | BLENotify | BLERead | BLEBroadcast); 
+BLEFloatCharacteristic Newton("c3ccbb8e-930c-4add-b57a-ce692b0c36ae", BLEWrite | BLENotify| BLERead | BLEBroadcast);
 //we can write, notify changes, read and broadcast the characteristic
 
 uint16_t oldRev = 0;  // last V reading from analog input
+
+int potenitometerValue = 0;
+float result = 0;
 
 //
 // BLE
@@ -80,6 +86,7 @@ void setup() {
   BLE.setLocalName("AinMonitor"); //just a name
   BLE.setAdvertisedService(AinService); //matches earlier
   AinService.addCharacteristic(Rev); // this is 19B10001-E8F2-537E-4F6C-D104768A1214
+  AinService.addCharacteristic(Newton);
   BLE.addService(AinService); // Add the Ain service to BLE
   Rev.writeValue(oldRev); // set initial value for this characteristic. We can write to the characteristic or read from it.
 
@@ -108,11 +115,6 @@ void opticalInterrupt() {
 void loop() {
   Serial.println(digitalRead(OPTICAL_PIN));
   
-
-  //
-  // BLE
-  //
-
   // wait for a BLE central if a remote device is found its called central
   BLEDevice central = BLE.central();
  
@@ -127,9 +129,6 @@ void loop() {
       check_switch1 = digitalRead(SW1); // check for switch being pressed
       check_switch2 = digitalRead(SW2); // check for switch being pressed
       check_switch3 = digitalRead(SW3); // check for switch being pressed
-      /*Serial.println(check_switch1);
-      Serial.println(check_switch2);
-      Serial.println(check_switch3);*/
       
       //Serial.println("----------------");
       if (check_switch1 == 0) 
@@ -146,6 +145,7 @@ void loop() {
           //currentRev++;
       }
       displayHandler();
+      readValue();
       updateRev(); // Check if revolution changed then send the updated signal to the receiver
     }
 
@@ -173,6 +173,7 @@ void displayHandler() {
   char revStr[64];
   snprintf(revStr, 64, "Rev: %d", currentRev / 2);
   display.print(revStr);
+  snprintf(revStr, 64, "Force: %dN", result);
   display.display();
 }
 
@@ -184,12 +185,6 @@ void setClockwise() {
   analogWrite(MOTOR_EN, 127);
   digitalWrite(MOTOR_IN1, LOW);
   digitalWrite(MOTOR_IN2, HIGH);
-  /*digitalWrite(MOTOR_IN1, LOW);
-  digitalWrite(MOTOR_IN2, HIGH);
-  display.clearDisplay();
-  display.setCursor(50,15);
-  display.print("CW");
-  display.display();*/
   isClock = true;
 }
 
@@ -200,11 +195,6 @@ void setAntiClockwise() {
   analogWrite(MOTOR_EN, 127);
   digitalWrite(MOTOR_IN2, LOW);
   digitalWrite(MOTOR_IN1, HIGH);
-  /*digitalWrite(MOTOR_IN2, LOW);
-  display.clearDisplay();
-  display.setCursor(50,15);
-  display.print("ACW");
-  display.display();*/
   isClock = false;
 }
 
@@ -212,16 +202,21 @@ void setAntiClockwise() {
 void stopMotor() {
   digitalWrite(MOTOR_IN1, LOW);
   digitalWrite(MOTOR_IN2, LOW);
-  /*display.clearDisplay();
-  display.setCursor(50,15);
-  display.print("STOP");
-  display.display();*/
   isStopped = true;
+}
+
+void readValue() {
+  potenitometerValue = analogRead(LOAD_CELL_PIN_IN);
+  result = potenitometerValue * (3.3 / 1024.0);
+  float magic_number = 39.24 / 2.0;
+  result = result * magic_number;
+  Serial.println(result);
+  Newton.writeValue(result);
 }
 
 void updateRev() 
 {
-  if (currentRev != oldRev) // Revolution has changed
+  if (currentRev != oldRev) {// Revolution has changed
     Rev.writeValue(currentRev / 2); 
     oldRev = currentRev;    // Save current value for future comparison 
   }

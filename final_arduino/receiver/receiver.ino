@@ -4,6 +4,7 @@
 
 const char uuid[] = "4315b8fb-7cca-4ba6-a4c0-c3c0c915180f"; //specific to the intended target nano system
 const char local[] = "4315b8fb-7cca-4ba6-a4c0-c3c0c915180f"; // giving the characteristic a specific local name "local"
+const char newtonChar[] = "c3ccbb8e-930c-4add-b57a-ce692b0c36ae"; // giving the characteristic a specific local name "local"
 
 uint16_t temp_count = 0;
 bool temp_bool = true;
@@ -52,7 +53,7 @@ class PacketHandler {
   }
 
   // Inserts the int16_t as a byte into the provided array
-  void convert_u16(int16_t in, int8_t data[2]) {
+  void convert_u16(int16_t in, uint8_t data[2]) {
     data[0] = in & 0xff;
     data[1] = (in >> 8);
   }
@@ -157,6 +158,7 @@ void loop() {
       //now we make a local name for the characteristic on this receiver called localp
       //local was setup earlier with the correct uuid
       BLECharacteristic localp = peripheral.characteristic(local);
+      BLECharacteristic localNewton = peripheral.characteristic(newtonChar);
       
       //following lines were inserted to show if the characteristic was functional
       if (!localp) {
@@ -171,20 +173,28 @@ void loop() {
         //shows that localp now has the correct uuid
         Serial.println(localp.uuid());
       }
-
-      int16_t revolutions = 0; 
-      int8_t data[2];
+      
+      int16_t revolutions = 0;
+      float newtons = 0.0;
+      uint8_t data[2];
+      char str[28];
       while (peripheral.connected()) {
         Serial.println("Reading the characteristic");
         localp.readValue(&revolutions, sizeof(revolutions)); //needs to know the value and the size of the data
+        localNewton.readValue(&newtons, sizeof(newtons));
         packet_handler->convert_u16(revolutions, data);
         if (revolutions < 0) {
-          pack = packet_handler->create_packet(2, 0);
-        } else {
           pack = packet_handler->create_packet(3, 0);
+        } else {
+          pack = packet_handler->create_packet(2, 0);
         }
-        packet_handler->set_data(&pack, data, array_length(data));
+        uint8_t size = sizeof(data) / sizeof(data[0]);
+        packet_handler->set_data(&pack, data, size);
         packet_handler->send_packet(pack);
+
+        snprintf(str, 28, "%f", newtons);
+        pack = packet_handler->create_packet(4, 1);
+        packet_handler->set_data(&pack, str, array_length(str));
       } 
 
     } else {
