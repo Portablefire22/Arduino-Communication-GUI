@@ -117,6 +117,22 @@ impl DataWindow {
                             plot_ui.line(line);
                         });
                     }
+                    PacketData::Float(packet_data, _, packet_time) => {
+                        let mut plot = Plot::new(format!("{}", self.window_name));
+                        plot.show(ui, |plot_ui| {
+                            let points: PlotPoints = data
+                                .iter()
+                                .map(|d| match *d {
+                                    PacketData::Float(d1, _, t1) => {
+                                        [t1.elapsed().as_secs_f64(), d1 as f64]
+                                    }
+                                    _ => [0.0, 0.0],
+                                })
+                                .collect();
+                            let line = Line::new(points);
+                            plot_ui.line(line);
+                        });
+                    }
                     _ => {
                         ui.label("Graph not supported for the following data type!");
                     }

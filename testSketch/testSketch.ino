@@ -1,6 +1,6 @@
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 
-uint16_t temp_count = 0;
+bool temp_bool = true;
 
 struct Packet {
     uint8_t PacketKind; // What type of packet it is
@@ -83,7 +83,7 @@ void loop() {
   packet_handler->set_data(&pack, "Testing", array_length("Testing"));
   packet_handler->send_packet(pack);
   delay(10);
-  if (temp_count % 3) {
+  if (temp_bool) {
     packet_handler->convert_u16(500, data);
     pack = packet_handler->create_packet(2, 1);
     packet_handler->set_data(&pack, data, array_length(data));
@@ -92,7 +92,7 @@ void loop() {
     pack = packet_handler->create_packet(3, 1);
     packet_handler->set_data(&pack, data, array_length(data));
   }
-  temp_count++;
+  temp_bool = !temp_bool;
   packet_handler->send_packet(pack);
   delay(1000);
 }
