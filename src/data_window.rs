@@ -96,7 +96,10 @@ impl DataWindow {
                         .clamp_range(0.0..=f32::MAX),
                 );
             });
-            ui.label(format!("Data Type: {}", data[0].display_variant()));
+            match data.get(0) {
+                Some(dat) => ui.label(format!("Data Type: {}", dat.display_variant())),
+                None => ui.label(format!("UNKNOWN TYPE!")),
+            };
             ui.horizontal(|ui| {
                 egui::ComboBox::from_label("Display Type")
                     .selected_text(format!("{:?}", self.display_type))
