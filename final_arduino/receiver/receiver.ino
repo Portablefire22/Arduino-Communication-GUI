@@ -54,6 +54,13 @@ class PacketHandler {
     packet->RawData[data_size] = 0x0D;
   }
 
+  void set_data(Packet* packet, char* data, uint8_t data_size) {
+    for (int i = 0; i < data_size; i++) {
+      packet->RawData[i] = data[i];
+    }
+    packet->RawData[data_size] = 0x0D;
+  }
+
   // Inserts the int16_t as a byte into the provided array
   void convert_u16(int16_t in, uint8_t data[2]) {
     data[0] = in & 0xff;
@@ -196,7 +203,7 @@ void loop() {
 
         snprintf(str, 28, "%f", newtons);
         pack = packet_handler->create_packet(4, 1);
-        packet_handler->set_data(&pack, str, array_length(str));
+        packet_handler->set_data(&pack, str, sizeof(str) / sizeof(str[0]));
       } 
 
     } else {
