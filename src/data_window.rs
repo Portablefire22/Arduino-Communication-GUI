@@ -117,8 +117,12 @@ impl DataWindow {
                 DisplayType::Graph => match data[0] {
                     PacketData::Integer(packet_data, _, packet_time) => {
                         let mut plot = Plot::new(format!("{}", self.window_name));
+                        let mut cap = self.data_cap;
+                        if cap > data.len() {
+                            cap = data.len()
+                        }
                         plot.show(ui, |plot_ui| {
-                            let points: PlotPoints = data[..self.data_cap]
+                            let points: PlotPoints = data[..cap]
                                 .iter()
                                 .map(|d| match *d {
                                     PacketData::Integer(d1, _, t1) => {
@@ -133,8 +137,12 @@ impl DataWindow {
                     }
                     PacketData::Float(packet_data, _, packet_time) => {
                         let mut plot = Plot::new(format!("{}", self.window_name));
+                        let mut cap = self.data_cap;
+                        if cap > data.len() {
+                            cap = data.len()
+                        }
                         plot.show(ui, |plot_ui| {
-                            let points: PlotPoints = data
+                            let points: PlotPoints = data[..cap]
                                 .iter()
                                 .map(|d| match *d {
                                     PacketData::Float(d1, _, t1) => {
