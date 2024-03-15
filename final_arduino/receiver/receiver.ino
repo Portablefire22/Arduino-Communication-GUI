@@ -1,5 +1,8 @@
 #include <ArduinoBLE.h>
 
+
+#include <avr/dtostrf.h>
+
 #define array_length(x) (sizeof(x) / sizeof(x[0]))
 
 const char uuid[] = "4315b8fb-7cca-4ba6-a4c0-c3c0c915180f"; //specific to the intended target nano system
@@ -25,16 +28,16 @@ class PacketHandler {
     4: Binary
   */
   void send_packet(Packet* packet) {
-    uint8_t data_to_send[32];
+    uint8_t data_to_send[32] = {0};
     data_to_send[0] = packet->PacketKind;
     data_to_send[1] = packet->PacketId;
     for (int i=2; i < 32; i++) {
       data_to_send[i] = packet->RawData[i - 2];
-      if (packet->RawData[i-2] == 0x0D) {
+      if (packet->RawData[i-2] == 0x17) {
         break;
       }
     }
-    data_to_send[31] = 0x0D; // Fail safe
+    data_to_send[31] = 0x17; // Fail safe
 
     Serial.write(data_to_send, 32); // 32 seems to be the magic number for outputting it all in one go
     
@@ -48,14 +51,14 @@ class PacketHandler {
     for (int i = 0; i < data_size; i++) {
       packet->RawData[i] = data[i];
     }
-    packet->RawData[data_size] = 0x0D;
+    packet->RawData[data_size] = 0x17;
   }
 
   void set_data(Packet* packet, char* data, uint8_t data_size) {
     for (int i = 0; i < data_size; i++) {
       packet->RawData[i] = data[i];
     }
-    packet->RawData[data_size] = 0x0D;
+    packet->RawData[data_size] = 0x17;
   }
 
   // Inserts the int16_t as a byte into the provided array
@@ -82,14 +85,14 @@ class PacketHandler {
     // Really can't be bothered to figure out how floats work in binary tbh.
     Packet pack = this->create_packet(5, id);
     char str[29]; 
-    snprintf(str, 29, "%f", &data);
-    this->set_data(&pack, str, sizeof(str) / sizeof(str[0]));
+    dtostrf(*data, 2, 5, str);
+    this->set_data(&pack, str, strlen(str));
     this->send_packet(&pack);
   }
 
   void send(char* data, int id) {
     Packet pack = this->create_packet(1, id);
-    this->set_data(&pack, data, sizeof(data) / sizeof(data[0]));
+    this->set_data(&pack, data, strlen(data));
     this->send_packet(&pack);
   }
 
