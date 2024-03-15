@@ -6,6 +6,8 @@ use crate::data_window::DataWindow;
 use crate::error_message;
 use colored::Colorize;
 use egui::vec2;
+use std::borrow::BorrowMut;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::usize;
@@ -32,6 +34,8 @@ pub struct TemplateApp {
     arduino: Arc<Mutex<Arduino>>,
     #[serde(skip)]
     windows: Vec<DataWindow>,
+    #[serde(skip)]
+    window_status: HashMap<String, bool>,
 }
 
 impl Default for TemplateApp {
@@ -48,6 +52,7 @@ impl Default for TemplateApp {
             arduino: Arc::new(Mutex::new(Arduino::new())),
             data_collection: Arc::new(Mutex::new(Vec::new())),
             windows: Vec::new(),
+            window_status: HashMap::new(),
         }
     }
 }
@@ -109,34 +114,18 @@ impl eframe::App for TemplateApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
-
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(&mut self.label);
-            });
-
-            ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                self.value += 1.0;
-            }
-            /*let mut window = egui::Window::new(format!("Arduino | {}", &self.selected_port))
-                .constrain(true)
-                .title_bar(true)
-                .resizable(true)
-                .scroll2(true)
-                .min_size(vec2(500.0, 300.0))
-                .enabled(true);
+            ui.heading("Arduino Serial Reader");
+            ui.label("
+                To select the serial device, navigate the 'Ports' menu on the top left of the 
+                program. 
+                To read data, navigate the data menu (located on the right of 'Ports') and 
+                select the data you wish to read. The name of the data set may be renamed by 
+                editing the text box in the newly created window.
+                The number of shown data entries may also be modified by modifying the 'Limit output' box.
+            ");
             ui.separator();
-            ui.add(egui::Label::new(&self.selected_port));
-            ui.separator();
-            window.show(&ctx, |ui| {
-                for v in self.data_collection.lock().unwrap().iter() {
-                    for v_exp in v.iter() {
-                        ui.add(egui::Label::new(format!("{:?}", v_exp)));
-                    }
-                }
-            });*/
+            ui.heading("Available Serial Devices:");
+            show_available_ports(self, ui);
             ui.separator();
             ui.add(egui::github_link_file!(
                 "https://github.com/Portablefire22/Arduino-Communication-GUI/blob/master/",
@@ -194,7 +183,12 @@ fn show_windows(app: &mut TemplateApp, ctx: &egui::Context) {
         Err(_e) => eprintln!("Error locking mutex!"),
         Ok(data) => {
             for window in &mut app.windows {
-                window.show(ctx, &data[window.selected_data]);
+                let tmp_str = &window.selected_data.to_string();
+                window.show(
+                    ctx,
+                    &data[window.selected_data],
+                    app.window_status.get_mut(tmp_str).unwrap(),
+                );
             }
         }
     }
@@ -239,22 +233,53 @@ fn show_data_menu(app: &mut TemplateApp, ctx: &egui::Context, ui: &mut egui::Ui)
                             .clicked()
                         {
                             // Prevents duplicate windows
-                            let t: Vec<_> = app
+                            let mut t: Vec<_> = app
                                 .windows
                                 .iter()
                                 .filter(|w| w.selected_data == index_iter)
                                 .collect();
-                            if t.len() == 0 {
-                                let window = data_window::DataWindow::new(
-                                    index_iter.to_string(),
-                                    index_iter,
-                                );
-                                app.windows.push(window);
+                            match t.get_mut(0) {
+                                Some(_) => {
+                                    app.window_status
+                                        .entry(index_iter.to_string())
+                                        .and_modify(|x| *x = !*x);
+                                }
+                                None => {
+                                    let window = data_window::DataWindow::new(
+                                        index_iter.to_string(),
+                                        index_iter,
+                                    );
+                                    app.windows.push(window);
+                                    app.window_status.insert(index_iter.to_string(), true);
+                                }
                             }
                         }
                     }
                 }
             });
+        }
+    }
+}
+
+fn show_available_ports(app: &mut TemplateApp, ui: &mut egui::Ui) {
+    let ports = tokio_serial::available_ports();
+    match ports {
+        Err(e) => {
+            ui.label("Error finding serial ports!");
+            eprintln!("{:?}", e);
+        }
+        Ok(ports) => 'port: {
+            if ports.len() == 0 {
+                ui.label("No serial devices found!");
+                break 'port;
+            }
+            for port in ports.iter() {
+                if port.port_name.eq_ignore_ascii_case(&app.selected_port) {
+                    ui.label(format!("{} (Connected)", &port.port_name));
+                } else {
+                    ui.label(format!("{}", &port.port_name));
+                }
+            }
         }
     }
 }

@@ -19,7 +19,6 @@ pub struct DataWindow {
     pub selected_data: usize,
     data_cap: usize,
     display_type: DisplayType,
-    pub open: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -46,7 +45,6 @@ impl Default for DataWindow {
             window_name: "Name Not Set!".to_owned(),
             selected_data: 1337420,
             display_type: DisplayType::NoDisplay,
-            open: true,
             data_cap: 100,
         }
     }
@@ -58,23 +56,22 @@ impl DataWindow {
             window_name,
             selected_data,
             display_type: DisplayType::NoDisplay,
-            open: true,
             data_cap: 100,
         }
     }
 
-    pub fn show(&mut self, ctx: &egui::Context, data: &Vec<PacketData>) {
+    pub fn show(&mut self, ctx: &egui::Context, data: &Vec<PacketData>, open: &mut bool) {
         let Self {
             window_name,
             selected_data,
             display_type,
-            open,
             data_cap,
         } = self.clone();
 
         let mut window = egui::Window::new(window_name)
             .id(egui::Id::new(format!("{}", &self.selected_data)))
             .resizable(true)
+            .open(open)
             .constrain(true)
             .title_bar(true)
             .collapsible(true);
