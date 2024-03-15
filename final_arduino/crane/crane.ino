@@ -47,6 +47,8 @@ int count;
 volatile bool colourOne;  // detect colour change
 volatile int16_t currentRev = 0;
 
+float rpm = 0;
+
 bool isClock; // Clockwise ?
 bool isStopped; 
 
@@ -102,6 +104,15 @@ void setup() {
 
 }
 
+void calc_revs_per_minute {
+  uint16_t tmp = millis();
+  tmp = (tmp / 1000)/60; // Convert to minutes to make it easier
+  rpm = (rev / 2.0) / tmp; 
+}
+
+float calc_speed() {
+  return (2 * PI * RADIUS) / rpm; 
+}
 
 void opticalInterrupt() {
   if (isStopped) return; // This shouldn't really be needed 
@@ -144,6 +155,7 @@ void loop() {
           setClockwise();
           //currentRev++;
       }
+      calc_revs_per_minute();
       displayHandler();
       readValue();
       updateRev(); // Check if revolution changed then send the updated signal to the receiver
@@ -171,6 +183,10 @@ void displayHandler() {
     digitalWrite(8, LOW);
   }
   char revStr[64];
+
+  // Remove this for speed!
+  //snprintf(revStr, 64, "%d rev | %fm/s", currentRev / 2, calc_speed());
+
   snprintf(revStr, 64, "Rev: %d", currentRev / 2);
   display.print(revStr);
   snprintf(revStr, 64, "Force: %dN", result);

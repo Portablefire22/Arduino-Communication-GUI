@@ -6,7 +6,7 @@
  *      Direction of rotation
  */
 
-use std::slice::Iter;
+use std::{ops::Add, slice::Iter};
 
 use egui::ScrollArea;
 use egui_plot::{Line, Plot, PlotPoints};
@@ -17,6 +17,7 @@ use crate::arduino::PacketData;
 pub struct DataWindow {
     window_name: String,
     pub selected_data: usize,
+    data_cap: usize,
     display_type: DisplayType,
     pub open: bool,
 }
@@ -46,6 +47,7 @@ impl Default for DataWindow {
             selected_data: 1337420,
             display_type: DisplayType::NoDisplay,
             open: true,
+            data_cap: 100,
         }
     }
 }
@@ -57,6 +59,7 @@ impl DataWindow {
             selected_data,
             display_type: DisplayType::NoDisplay,
             open: true,
+            data_cap: 100,
         }
     }
 
@@ -66,6 +69,7 @@ impl DataWindow {
             selected_data,
             display_type,
             open,
+            data_cap,
         } = self.clone();
 
         let mut window = egui::Window::new(window_name)
@@ -83,6 +87,15 @@ impl DataWindow {
                 ui.label("Data Name:");
                 ui.text_edit_singleline(&mut self.window_name);
             });
+            // Allow limiting of shown data, maybe it prevents running out of memory?
+            ui.horizontal(|ui| {
+                ui.label("Limit output:");
+                ui.add(
+                    egui::DragValue::new(&mut self.data_cap)
+                        .speed(0.1)
+                        .clamp_range(0.0..=f32::MAX),
+                );
+            });
             ui.label(format!("Data Type: {}", data[0].display_variant()));
             ui.horizontal(|ui| {
                 egui::ComboBox::from_label("Display Type")
@@ -98,13 +111,14 @@ impl DataWindow {
                     });
                 ui.end_row();
             });
+
             ui.separator();
             match self.display_type {
                 DisplayType::Graph => match data[0] {
                     PacketData::Integer(packet_data, _, packet_time) => {
                         let mut plot = Plot::new(format!("{}", self.window_name));
                         plot.show(ui, |plot_ui| {
-                            let points: PlotPoints = data
+                            let points: PlotPoints = data[..self.data_cap]
                                 .iter()
                                 .map(|d| match *d {
                                     PacketData::Integer(d1, _, t1) => {
@@ -139,25 +153,34 @@ impl DataWindow {
                 },
                 DisplayType::Text => {
                     ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
-                        for dat in data {
+                        let mut tmp_string: String = String::new();
+                        let mut i = 0;
+                        for dat in data.iter().rev() {
+                            if i == self.data_cap {
+                                break;
+                            }
                             match dat {
                                 PacketData::String(packet_data, _, packet_time) => {
-                                    ui.label(format!(
-                                        "[{:>4.2}] {}",
-                                        packet_time.elapsed().as_secs_f32(),
-                                        packet_data
-                                    ));
+                                    tmp_string = tmp_string
+                                        + &format!(
+                                            "[{:>4.2}] {}\n",
+                                            packet_time.elapsed().as_secs_f32(),
+                                            &packet_data
+                                        );
                                 }
                                 PacketData::Integer(packet_data, _, packet_time) => {
-                                    ui.label(format!(
-                                        "[{:>4.2}] {}",
-                                        packet_time.elapsed().as_secs_f32(),
-                                        packet_data
-                                    ));
+                                    tmp_string = tmp_string
+                                        + &format!(
+                                            "[{:>4.2}] {}\n",
+                                            packet_time.elapsed().as_secs_f32(),
+                                            &packet_data
+                                        );
                                 }
                                 _ => (),
                             }
+                            i += 1;
                         }
+                        ui.label(&tmp_string);
                     });
                 }
                 _ => (),

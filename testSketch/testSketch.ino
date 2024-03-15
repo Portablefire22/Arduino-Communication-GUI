@@ -94,7 +94,7 @@ void loop() {
   }
   temp_bool = !temp_bool;
   packet_handler->send_packet(pack);
-  delay(1000);
+  delay(10);
 }
 
 // arduino-cli compile --fqbn arduino:avr:uno testSketch && arduino-cli upload testSketch -p /dev/ttyUSB0 -b arduino:avr:uno    
