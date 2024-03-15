@@ -184,6 +184,14 @@ impl DataWindow {
                                             &packet_data
                                         );
                                 }
+                                PacketData::Float(packet_data, _, packet_time) => {
+                                    tmp_string = tmp_string
+                                        + &format!(
+                                            "[{:>4.2}] {}\n",
+                                            packet_time.elapsed().as_secs_f32(),
+                                            &packet_data
+                                        );
+                                }
                                 _ => (),
                             }
                             i += 1;

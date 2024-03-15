@@ -150,26 +150,26 @@ impl eframe::App for TemplateApp {
             Err(_) => (),
             Ok(t) => match t {
                 ThreadMSG::Data(data) => match data {
-                    PacketData::String(_, id, _time) | PacketData::Integer(_, id, _time) => {
-                        match self.data_collection.lock() {
-                            Ok(mut t) => match t.get(id as usize) {
-                                None => {
-                                    if id == 0 {
-                                        t.resize(1, Vec::new());
-                                    } else {
-                                        t.resize(id as usize + 1, Vec::new());
-                                    }
-                                    t[id as usize].push(data);
+                    PacketData::String(_, id, _time)
+                    | PacketData::Integer(_, id, _time)
+                    | PacketData::Float(_, id, _time) => match self.data_collection.lock() {
+                        Ok(mut t) => match t.get(id as usize) {
+                            None => {
+                                if id == 0 {
+                                    t.resize(1, Vec::new());
+                                } else {
+                                    t.resize(id as usize + 1, Vec::new());
                                 }
-                                Some(_) => {
-                                    t[id as usize].push(data);
-                                }
-                            },
-                            Err(_) => {
-                                eprintln!("Mutex error: Error unlocking whilst retrieving data")
+                                t[id as usize].push(data);
                             }
+                            Some(_) => {
+                                t[id as usize].push(data);
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Mutex error: Error unlocking whilst retrieving data")
                         }
-                    }
+                    },
                     _ => (),
                 },
                 _ => (),

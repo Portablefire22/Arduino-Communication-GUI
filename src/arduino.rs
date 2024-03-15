@@ -178,7 +178,7 @@ impl Arduino {
                 let mut tmp_vec: Vec<u8> = vec![0; self.serial_buffer.len() - 3];
                 let mut j = 0;
                 for i in self.serial_buffer[2..].into_iter() {
-                    if *i == 0x0D || j == tmp_vec.len() {
+                    if *i == 0x17 || j == tmp_vec.len() {
                         break;
                     }
                     tmp_vec[j] = *i;
@@ -219,11 +219,13 @@ impl Arduino {
                 tmp_string.push(*byte as char);
             }
         }
-        packet.constructed_data = PacketData::Float(
-            tmp_string.parse::<f64>().unwrap(),
-            packet.packet_id,
-            Instant::now(),
-        );
+        match tmp_string.parse::<f64>() {
+            Err(_) => println!("{:?}", &packet.raw_data),
+            Ok(float_value) => {
+                packet.constructed_data =
+                    PacketData::Float(float_value, packet.packet_id, Instant::now());
+            }
+        }
     }
 
     /// Reads serial and converts the data to an integer, boolean determines
