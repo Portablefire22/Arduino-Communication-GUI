@@ -6,14 +6,11 @@ const char uuid[] = "4315b8fb-7cca-4ba6-a4c0-c3c0c915180f"; //specific to the in
 const char local[] = "4315b8fb-7cca-4ba6-a4c0-c3c0c915180f"; // giving the characteristic a specific local name "local"
 const char newtonChar[] = "c3ccbb8e-930c-4add-b57a-ce692b0c36ae"; // giving the characteristic a specific local name "local"
 
-uint16_t temp_count = 0;
-bool temp_bool = true;
 struct Packet {
     uint8_t PacketKind; // What type of packet it is
     uint8_t PacketId;
     int8_t RawData[32];     // Raw bytes of data, 2 bytes taken for first two args, 
                             // one byte for end of text, leaving 29 bytes for data per communication
-    
   };
 
 class PacketHandler {
@@ -27,13 +24,13 @@ class PacketHandler {
     3: NegInteger
     4: Binary
   */
-  void send_packet(Packet packet) {
+  void send_packet(Packet* packet) {
     uint8_t data_to_send[32];
-    data_to_send[0] = packet.PacketKind;
-    data_to_send[1] = packet.PacketId;
+    data_to_send[0] = packet->PacketKind;
+    data_to_send[1] = packet->PacketId;
     for (int i=2; i < 32; i++) {
-      data_to_send[i] = packet.RawData[i - 2];
-      if (packet.RawData[i-2] == 0x0D) {
+      data_to_send[i] = packet->RawData[i - 2];
+      if (packet->RawData[i-2] == 0x0D) {
         break;
       }
     }
@@ -80,10 +77,37 @@ class PacketHandler {
       char t = Serial.read();
     }
   }
+
+  void send(float* data, int id) {
+    // Really can't be bothered to figure out how floats work in binary tbh.
+    Packet pack = this->create_packet(5, id);
+    char str[29]; 
+    snprintf(str, 29, "%f", &data);
+    this->set_data(&pack, str, sizeof(str) / sizeof(str[0]));
+    this->send_packet(&pack);
+  }
+
+  void send(char* data, int id) {
+    Packet pack = this->create_packet(1, id);
+    this->set_data(&pack, data, sizeof(data) / sizeof(data[0]));
+    this->send_packet(&pack);
+  }
+
+  void send(int16_t* data, int id) {
+    Packet pack;
+    uint8_t data_to_send[2];
+    if (*data < 0) {
+      pack = this->create_packet(3,id);
+    } else {
+      pack = this->create_packet(2, id);
+    }
+    this->convert_u16(*data, data_to_send);
+    this->set_data(&pack, data_to_send, sizeof(data_to_send) / sizeof(data_to_send[0]));
+    this->send_packet(&pack);
+  }
 };
 
 PacketHandler* packet_handler = new PacketHandler();
-Packet pack;
 void setup() {
   Serial.begin(9600);
   pinMode(13, OUTPUT);
@@ -141,14 +165,17 @@ void loop() {
 
     if (peripheral.connect()) {
       Serial.println("Connected");
+      packet_handler->send("Connected", 0);
 
       Serial.println("- Discovering peripheral device attributes, wait 20s...");//need to discover the attributes of the sender
       if (peripheral.discoverAttributes()) {
         Serial.println("* Peripheral device attributes discovered!");
+        packet_handler->send("Discovery Success!", 0);
         Serial.println(" ");
       } else {
         Serial.println("* Peripheral device attributes discovery failed!");
         Serial.println(" ");
+        packet_handler->send("Discovery Failed!", 0);
         peripheral.disconnect();
         return;
       }
@@ -160,8 +187,10 @@ void loop() {
 
         //Serial.print(characteristicCount);
         Serial.println("characteristics discovered in service");
+        packet_handler->send("Characteristic found!", 0);
       } else {
         Serial.println("Peripheral does NOT have service");
+        packet_handler->send("No service found!", 0);
       }
 
       //now we make a local name for the characteristic on this receiver called localp
@@ -189,21 +218,13 @@ void loop() {
       char str[28];
       while (peripheral.connected()) {
         Serial.println("Reading the characteristic");
+        packet_handler->send("Reading...", 0);
         localp.readValue(&revolutions, sizeof(revolutions)); //needs to know the value and the size of the data
         localNewton.readValue(&newtons, sizeof(newtons));
-        packet_handler->convert_u16(revolutions, data);
-        if (revolutions < 0) {
-          pack = packet_handler->create_packet(3, 0);
-        } else {
-          pack = packet_handler->create_packet(2, 0);
-        }
-        uint8_t size = sizeof(data) / sizeof(data[0]);
-        packet_handler->set_data(&pack, data, size);
-        packet_handler->send_packet(pack);
-
-        snprintf(str, 28, "%f", newtons);
-        pack = packet_handler->create_packet(4, 1);
-        packet_handler->set_data(&pack, str, sizeof(str) / sizeof(str[0]));
+        packet_handler->send("Read values!", 0);
+        packet_handler->send(&revolutions, 1);
+        packet_handler->send(&newtons, 2); 
+        packet_handler->send("Sent values!", 0);
       } 
 
     } else {
@@ -212,3 +233,6 @@ void loop() {
     }
   }
 }
+
+
+
