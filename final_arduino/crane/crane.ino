@@ -243,7 +243,7 @@ void adjust_speed(boolean is_increase, uint8_t increment) {
     motor_speed_out -= increment;
   } else if (is_increase && (int) motor_speed_out + (int) increment > 255) { // Clamp it
     motor_speed_out = 255;
-  } else if (!is_increase && (int) motor_speed_out - (int) < 0) {
+  } else if (!is_increase && (int) motor_speed_out - (int) increment < 0) {
     motor_speed_out = 0;
   }
 }
