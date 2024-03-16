@@ -117,7 +117,7 @@ void loop() {
   int16_t t = -5325;
   int16_t t_2 = 500;
   int16_t t_3 = -500;
-  float float_test = 4.432;
+  float float_test = sin(micros());
   //packet_handler->send(&t, 1);
   //packet_handler->send("4.432432", 3)
   packet_handler->send(&float_test, 1);

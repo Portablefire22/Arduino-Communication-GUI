@@ -6,7 +6,7 @@
  *      Direction of rotation
  */
 
-use std::{ops::Add, slice::Iter};
+use std::{fmt::Display, ops::Add, slice::Iter, time::Instant};
 
 use egui::ScrollArea;
 use egui_plot::{Line, Plot, PlotPoints};
@@ -116,46 +116,8 @@ impl DataWindow {
             let data_2 = data.iter().rev().collect::<Vec<&PacketData>>();
             match self.display_type {
                 DisplayType::Graph => match data[0] {
-                    PacketData::Integer(packet_data, _, packet_time) => {
-                        let mut plot = Plot::new(format!("{}", self.window_name));
-                        let mut cap = self.data_cap;
-                        if cap > data.len() {
-                            cap = data.len()
-                        }
-                        plot.show(ui, |plot_ui| {
-                            let points: PlotPoints = data_2[..cap]
-                                .iter()
-                                .map(|d| match *d {
-                                    PacketData::Integer(d1, _, t1) => {
-                                        [t1.elapsed().as_secs_f64(), *d1 as f64]
-                                    }
-                                    _ => [0.0, 0.0],
-                                })
-                                .collect();
-                            let line = Line::new(points);
-                            plot_ui.line(line);
-                        });
-                    }
-                    PacketData::Float(packet_data, _, packet_time) => {
-                        let mut plot = Plot::new(format!("{}", self.window_name));
-                        let mut cap = self.data_cap;
-                        if cap > data.len() {
-                            cap = data.len()
-                        }
-
-                        plot.show(ui, |plot_ui| {
-                            let points: PlotPoints = data_2[..cap]
-                                .iter()
-                                .map(|d| match *d {
-                                    PacketData::Float(d1, _, t1) => {
-                                        [t1.elapsed().as_secs_f64(), *d1 as f64]
-                                    }
-                                    _ => [0.0, 0.0],
-                                })
-                                .collect();
-                            let line = Line::new(points);
-                            plot_ui.line(line);
-                        });
+                    PacketData::Integer(_, _, _) | PacketData::Float(_, _, _) => {
+                        plot_data(ui, &self.window_name, &mut self.data_cap.clone(), &data_2)
                     }
                     _ => {
                         ui.label("Graph not supported for the following data type!");
@@ -163,41 +125,7 @@ impl DataWindow {
                 },
                 DisplayType::Text => {
                     ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
-                        let mut tmp_string: String = String::new();
-                        let mut i = 0;
-                        for dat in data.iter().rev() {
-                            if i == self.data_cap {
-                                break;
-                            }
-                            match dat {
-                                PacketData::String(packet_data, _, packet_time) => {
-                                    tmp_string = tmp_string
-                                        + &format!(
-                                            "[{:>4.2}] {}\n",
-                                            packet_time.elapsed().as_secs_f32(),
-                                            &packet_data
-                                        );
-                                }
-                                PacketData::Integer(packet_data, _, packet_time) => {
-                                    tmp_string = tmp_string
-                                        + &format!(
-                                            "[{:>4.2}] {}\n",
-                                            packet_time.elapsed().as_secs_f32(),
-                                            &packet_data
-                                        );
-                                }
-                                PacketData::Float(packet_data, _, packet_time) => {
-                                    tmp_string = tmp_string
-                                        + &format!(
-                                            "[{:>4.2}] {}\n",
-                                            packet_time.elapsed().as_secs_f32(),
-                                            &packet_data
-                                        );
-                                }
-                                _ => (),
-                            }
-                            i += 1;
-                        }
+                        let tmp_string: String = get_text(data);
                         ui.label(&tmp_string);
                     });
                 }
@@ -205,4 +133,41 @@ impl DataWindow {
             }
         });
     }
+}
+
+fn plot_data(ui: &mut egui::Ui, window_name: &String, cap: &mut usize, data: &Vec<&PacketData>) {
+    let mut plot = Plot::new(format!("{}", window_name));
+    if cap > &mut data.len() {
+        *cap = data.len()
+    }
+    plot.show(ui, |plot_ui| {
+        let points: PlotPoints = data[..*cap]
+            .iter()
+            .map(|d| match *d {
+                PacketData::Integer(d1, _, t1) => [t1.elapsed().as_secs_f64(), *d1 as f64],
+                PacketData::Float(d1, _, t1) => [t1.elapsed().as_secs_f64(), *d1 as f64],
+                _ => [0.0, 0.0],
+            })
+            .collect();
+        let line = Line::new(points);
+        plot_ui.line(line);
+    });
+}
+
+fn get_text(data: &Vec<PacketData>) -> String {
+    let mut tmp = String::new();
+    for d in data {
+        tmp = tmp
+            + &match d {
+                PacketData::Float(d, _, t) => format_text(d, t),
+                PacketData::String(d, _, t) => format_text(d, t),
+                PacketData::Integer(d, _, t) => format_text(d, t),
+                _ => "Unknown Data Type\n".to_string(),
+            };
+    }
+    tmp
+}
+
+fn format_text<D: Display>(data: D, time: &Instant) -> String {
+    format!("[{:>4.2}] {}\n", time.elapsed().as_secs_f32(), &data)
 }

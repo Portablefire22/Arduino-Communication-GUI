@@ -12,6 +12,7 @@ PARTIALLY WORKS - Has been tested, provides wanted results most of the time but 
 - Monitor position of load (NO)
 - Strain-gauge (TESTED)
 - Bluetooth sender (PARTIALLY TESTED)
+- OLED (TESTED)
 ## Data
 - Speed - Functionality is theoretically there but is missing data required for it to work
 - RPM - Should be functional (UNTESTED)
