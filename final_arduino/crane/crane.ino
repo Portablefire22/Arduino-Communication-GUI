@@ -5,11 +5,13 @@
 #include <SPI.h>
 #include <ArduinoBLE.h> // BLE Library
 
+#include <avr/dtostrf.h>
+
 #define SW1 11
 #define SW2 12
 #define SW3 13
 
-#define RADIUS 2
+#define RADIUS 0.01
 
 #define OPTICAL_PIN 2
 
@@ -38,7 +40,7 @@ uint16_t oldRev = 0;  // last reading of revolutions
 int load_cell_in = 0; 
 float result = 0;
 
-uint8_t motor_speed_out = 127;
+uint8_t motor_speed_out = 255;
 
 //
 // BLE
@@ -167,10 +169,11 @@ void loop() {
           setClockwise();
           //currentRev++;
       }
-      calc_revs_per_minute();
-      displayHandler();
+      //calc_revs_per_minute();
       readValue();
       updateRev(); // Check if revolution changed then send the updated signal to the receiver
+
+      displayHandler();
     }
 
     Serial.print("Disconnected from central: ");
@@ -197,10 +200,15 @@ void displayHandler() {
 
   // Remove this for speed!
   //snprintf(revStr, 64, "%d rev | %fm/s", currentRev / 2, calc_speed());
+  //calc_revs_per_minute();
+  //calc_speed();
 
-  snprintf(revStr, 64, "Rev: %d", currentRev / 2);
+  snprintf(revStr, 64, "Rev: %d\n", currentRev / 2);
   display.print(revStr);
-  snprintf(revStr, 64, "Force: %dN", result);
+  char str[32]; 
+  dtostrf(result, 2, 5, str);
+  snprintf(revStr, 64, "Force:%sN", str);
+  display.print(revStr);
   display.display();
 }
 
@@ -253,7 +261,6 @@ void readValue() {
   result = load_cell_in * (3.3 / 1024.0);
   float magic_number = 39.24 / 2.0; // Theoretically the amount of Newtons per input voltage
   result = result * magic_number;
-  Serial.println(result);
   Newton.writeValue(result);
 }
 

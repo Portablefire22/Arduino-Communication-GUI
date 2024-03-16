@@ -133,7 +133,7 @@ void setup() {
 void loop() {
   // check if a peripheral has been discovered
   BLEDevice peripheral = BLE.available();
-
+  packet_handler->send("Scanning...", 0);
   if (peripheral) {
     //this section of code prints out the main details of the sender
     Serial.println("Discovered a peripheral - details below");

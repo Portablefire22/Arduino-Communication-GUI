@@ -113,6 +113,7 @@ impl DataWindow {
             });
 
             ui.separator();
+            let data_2 = data.iter().rev().collect::<Vec<&PacketData>>();
             match self.display_type {
                 DisplayType::Graph => match data[0] {
                     PacketData::Integer(packet_data, _, packet_time) => {
@@ -122,11 +123,11 @@ impl DataWindow {
                             cap = data.len()
                         }
                         plot.show(ui, |plot_ui| {
-                            let points: PlotPoints = data[..cap]
+                            let points: PlotPoints = data_2[..cap]
                                 .iter()
                                 .map(|d| match *d {
                                     PacketData::Integer(d1, _, t1) => {
-                                        [t1.elapsed().as_secs_f64(), d1 as f64]
+                                        [t1.elapsed().as_secs_f64(), *d1 as f64]
                                     }
                                     _ => [0.0, 0.0],
                                 })
@@ -141,12 +142,13 @@ impl DataWindow {
                         if cap > data.len() {
                             cap = data.len()
                         }
+
                         plot.show(ui, |plot_ui| {
-                            let points: PlotPoints = data[..cap]
+                            let points: PlotPoints = data_2[..cap]
                                 .iter()
                                 .map(|d| match *d {
                                     PacketData::Float(d1, _, t1) => {
-                                        [t1.elapsed().as_secs_f64(), d1 as f64]
+                                        [t1.elapsed().as_secs_f64(), *d1 as f64]
                                     }
                                     _ => [0.0, 0.0],
                                 })
